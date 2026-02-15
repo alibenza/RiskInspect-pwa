@@ -68,15 +68,16 @@ function Dashboard() {
       {hasData ? (
         <>
           {/* GRAPHIQUE */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <h3 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-tight flex items-center">
-              <ClipboardList className="mr-2 w-4 h-4 text-blue-600" />
-              Profil de Risque
-            </h3>
-            <div className="h-72 w-full">
-               <RiskChart categoryScores={responses} /> 
-            </div>
-          </div>
+<div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+  <h3 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-tight flex items-center">
+    <ClipboardList className="mr-2 w-4 h-4 text-blue-600" />
+    Profil de Risque
+  </h3>
+  <div className="h-72 w-full">
+      {/* On retire categoryScores={responses} car le composant est auto-suffisant */}
+      <RiskChart /> 
+  </div>
+</div>
 
           {/* ACTIONS D'EXPORTATION ET RESET */}
           <div className="space-y-3">
