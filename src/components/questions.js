@@ -1,68 +1,30 @@
-// Ce fichier doit être placé dans src/components/questions.js
 export const RISK_QUESTIONS = [
   {
-    id: 'infos_generales',
-    title: 'Informations Générales',
-    questions: [
-      { id: 'nomination', label: 'Nomination', type: 'text' },
-      { id: 'activite_nature', label: 'Nature de l’activité', type: 'text' },
-      { id: 'mise_en_service', label: 'Date Création et mise en service', type: 'date' }
-    ]
-  },
-  {
     id: 'site_infos',
-    title: 'Informations sur le Site',
+    title: 'Informations Site',
     questions: [
-      { id: 'superficie_totale', label: 'Superficie totale du site', type: 'text' },
-      { id: 'superficie_batie', label: 'Superficie bâtie', type: 'text' },
-      { id: 'compartimentage', label: 'Compartimentage (production, stockage, admin...)', type: 'textarea' }
-    ]
-  },
-  {
-    id: 'utilites',
-    title: 'Utilités & Énergie',
-    questions: [
-      { id: 'elec_principale', label: 'Électricité (Fournisseur, Transfos, Maintenance)', type: 'textarea' },
-      { id: 'elec_secours', label: 'Électricité de secours (Groupes, Puissance)', type: 'text' },
-      { id: 'eau', label: 'Eau (Capacité, Utilisation)', type: 'textarea' },
-      { id: 'gaz_gasoil', label: 'Gasoil et autres gaz sous pression', type: 'text' }
-    ]
-  },
-  {
-    id: 'hse_management',
-    title: 'Management des Risques & HSE',
-    questions: [
-      { id: 'structure_hse', label: 'Existence d’une structure HSE', type: 'boolean', weight: 20 },
-      { id: 'doc_hse', label: 'Documentation (EDD, EIE, Permis de travail)', type: 'boolean', weight: 15 },
-      { id: 'gestion_dechets', label: 'Gestion et traitement des déchets', type: 'textarea' }
-    ]
-  },
-  {
-    id: 'maintenance',
-    title: 'Maintenance',
-    questions: [
-      { id: 'structure_maint', label: 'Existence d’une structure de maintenance', type: 'boolean', weight: 15 },
-      { id: 'prog_maint', label: 'Programmes de maintenance (Préventive/Curative)', type: 'boolean', weight: 15 },
-      { id: 'gmao', label: 'Utilisation d’une GMAO', type: 'boolean', weight: 5 }
+      { id: 'superficie_batie', label: 'Superficie bâtie (m²)', type: 'number' },
+      { id: 'activite', label: 'Type d\'activité', type: 'text' }
     ]
   },
   {
     id: 'incendie',
-    title: 'Moyens de Lutte contre l’Incendie',
+    title: 'Protection Incendie',
     questions: [
-      { id: 'detection', label: 'Système de détection automatique', type: 'boolean', weight: 25 },
-      { id: 'moyens_mobiles', label: 'Extincteurs (Type, Répartition, Mise à jour)', type: 'boolean', weight: 15 },
-      { id: 'reseau_hydraulique', label: 'Réseau hydraulique (Pompes, RIA, Poteaux)', type: 'boolean', weight: 20 },
-      { id: 'signalisation', label: 'Système de signalisation et interdictions', type: 'boolean', weight: 5 }
+      { id: 'nb_extincteurs', label: 'Nombre d’extincteurs', type: 'number' },
+      { id: 'etat_extincteurs', label: 'Maintenance & État des extincteurs', type: 'range', weight: 15 },
+      { id: 'ria', label: 'Réseau RIA (Pression, Accessibilité)', type: 'range', weight: 20 },
+      { id: 'detection', label: 'Fiabilité Détection Automatique', type: 'range', weight: 25 }
     ]
   },
   {
-    id: 'surete',
-    title: 'Sûreté du Site',
+    id: 'organisation',
+    title: 'Management & HSE',
     questions: [
-      { id: 'cloture_acces', label: 'Clôture et contrôle des accès', type: 'boolean', weight: 10 },
-      { id: 'gardiennage', label: 'Gardiennage (Effectif, Brigades)', type: 'boolean', weight: 10 },
-      { id: 'videosurveillance', label: 'Vidéosurveillance opérationnelle', type: 'boolean', weight: 15 }
+      { id: 'formation', label: 'Formation du personnel (Équipiers d\'intervention)', type: 'range', weight: 15 },
+      { id: 'exercices', label: 'Fréquence des exercices d\'évacuation', type: 'range', weight: 10 },
+      { id: 'permis_feu', label: 'Rigueur du système Permis de Feu', type: 'range', weight: 20 }
     ]
   }
+  // Tu peux copier-coller un bloc { id, title, questions } pour ajouter une section
 ];
