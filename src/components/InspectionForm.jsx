@@ -10,7 +10,6 @@ function InspectionForm() {
 
     return (
       <div className="space-y-4">
-        {/* PARTIE 1 : CONTRÔLE PRINCIPAL */}
         <div className="w-full">
           {q.type === 'range' ? (
             <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -45,12 +44,10 @@ function InspectionForm() {
               value={resp.value || ''}
               onChange={(e) => setResponse(q.id, 'value', e.target.value)}
               className="w-full p-4 rounded-2xl bg-slate-50 border-none text-sm focus:ring-2 focus:ring-blue-500"
-              placeholder="Détails techniques principaux..."
+              placeholder="Détails techniques..."
             />
           )}
         </div>
-
-        {/* PARTIE 2 : COMMENTAIRE LIBRE */}
         <div className="relative">
           <div className="absolute left-3 top-3 text-slate-300">
             <MessageSquare size={14} />
@@ -60,7 +57,7 @@ function InspectionForm() {
             value={resp.comment || ''}
             onChange={(e) => setResponse(q.id, 'comment', e.target.value)}
             className="w-full pl-9 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-xs italic text-slate-600 focus:ring-2 focus:ring-blue-400 outline-none transition-all shadow-sm"
-            placeholder="Observations ou remarques..."
+            placeholder="Observations..."
           />
         </div>
       </div>
@@ -71,52 +68,32 @@ function InspectionForm() {
     <div className="space-y-10 pb-32">
       {questionsConfig.map((section) => (
         <div key={section.id} className="bg-white rounded-[2.5rem] p-6 shadow-md border border-slate-100 relative">
-          
           <div className="flex justify-between items-start mb-8 border-b border-slate-50 pb-4">
-            <h2 className="text-xl font-black text-slate-800 leading-tight pr-8">
-              {section.title}
-            </h2>
+            <h2 className="text-xl font-black text-slate-800 leading-tight pr-8">{section.title}</h2>
             <button 
               onClick={() => { if(window.confirm("Supprimer ce volet ?")) removeSection(section.id) }}
               className="text-slate-200 hover:text-red-500 transition-colors p-2"
-            >
-              <Trash2 size={18} />
-            </button>
+            ><Trash2 size={18} /></button>
           </div>
-
           <div className="space-y-10">
             {section.questions.map((q) => (
               <div key={q.id} className="animate-in slide-in-from-bottom-2 duration-300">
                 <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
-                  {q.label}
-                  {q.weight > 0 && (
-                    <span className="ml-2 text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">
-                      Poids: {q.weight}
-                    </span>
-                  )}
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2" />{q.label}
                 </label>
                 {renderField(q)}
               </div>
             ))}
           </div>
-
           <button
             onClick={() => {
               const label = prompt("Nom du nouveau point ?")
-              if (!label) return
-              const isScore = window.confirm("OK = Notation 0-5, Annuler = Texte")
-              addQuestion(section.id, label, isScore ? 'range' : 'text')
+              if (label) addQuestion(section.id, label, window.confirm("Notation 0-5 ?") ? 'range' : 'text')
             }}
             className="mt-10 w-full py-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 text-[11px] font-black uppercase hover:border-blue-200 hover:text-blue-500 transition-all flex items-center justify-center space-x-2"
-          >
-            <PlusCircle size={16} />
-            <span>Ajouter une question</span>
-          </button>
+          ><PlusCircle size={16} /><span>Ajouter une question</span></button>
         </div>
       ))}
-
-      {/* Bouton Flottant */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-md px-6 z-50">
         <button
           onClick={() => {
@@ -124,13 +101,9 @@ function InspectionForm() {
             if (title) addSection(title)
           }}
           className="w-full bg-slate-900 text-white py-4 rounded-2xl shadow-2xl flex items-center justify-center space-x-3 border-2 border-slate-800 active:scale-95 transition-transform"
-        >
-          <PlusCircle size={20} className="text-blue-400" />
-          <span className="font-bold text-sm uppercase">Nouveau Volet</span>
-        </button>
+        ><PlusCircle size={20} className="text-blue-400" /><span className="font-bold text-sm uppercase">Nouveau Volet</span></button>
       </div>
     </div>
   )
 }
-
 export default InspectionForm
