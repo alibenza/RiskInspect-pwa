@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LayoutDashboard, ClipboardCheck, History, Settings, Bell } from 'lucide-react';
 import Dashboard from './components/Dashboard'; // Ton composant de scoring
-import RiskForm from './components/RiskForm';   // Ton composant de saisie
+import RiskForm from './components/InspectionForm';   // Ton composant de saisie
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
