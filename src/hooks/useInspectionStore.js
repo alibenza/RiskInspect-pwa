@@ -1,78 +1,60 @@
 import { create } from 'zustand';
-import { RISK_QUESTIONS } from '../components/questions.js';;
+import { RISK_QUESTIONS } from '../components/questions';
 
 export const useInspectionStore = create((set, get) => ({
   responses: {},
+  
+  setResponse: (id, value) => set((state) => ({
+    responses: { ...state.responses, [id]: value }
+  })),
 
-  // Enregistrer une réponse
-  setResponse: (id, value) => {
-    const newResponses = { ...get().responses, [id]: value };
-    set({ responses: newResponses });
-    // Sauvegarde automatique locale
-    localStorage.setItem('risk_inspect_data', JSON.stringify(newResponses));
-  },
+  resetInspection: () => set({ responses: {} }),
 
-  // Charger les données sauvegardées
   loadFromLocalStorage: () => {
-    const saved = localStorage.getItem('risk_inspect_data');
-    if (saved) {
-      set({ responses: JSON.parse(saved) });
-      return true;
-    }
-    return false;
+    const saved = localStorage.getItem('risk-inspect-data');
+    if (saved) set({ responses: JSON.parse(saved) });
   },
 
-  // Réinitialiser
-  resetInspection: () => {
-    localStorage.removeItem('risk_inspect_data');
-    set({ responses: {} });
-  },
-
-  // Calcul du score global (Moyenne pondérée)
   calculateScore: () => {
     const responses = get().responses;
-    let totalWeight = 0;
-    let gainedWeight = 0;
+    let totalPointsPossible = 0;
+    let totalPointsGained = 0;
 
+    // --- LOGIQUE SPÉCIFIQUE : EXTINCTEURS ---
+    const surface = parseFloat(responses['superficie_batie']) || 0;
+    const nbReel = parseFloat(responses['nb_extincteurs']) || 0;
+    const nbTheorique = Math.ceil(surface / 150);
+    
+    let scoreNormeExtincteur = 0;
+    if (nbTheorique > 0) {
+      scoreNormeExtincteur = Math.min(5, (nbReel / nbTheorique) * 5);
+    }
+
+    // --- CALCUL GLOBAL PONDÉRÉ ---
     RISK_QUESTIONS.forEach(section => {
       section.questions.forEach(q => {
-        if (q.type === 'boolean') {
-          totalWeight += (q.weight || 10); // Poids par défaut de 10 si non défini
-          if (responses[q.id] === 'Oui') {
-            gainedWeight += (q.weight || 10);
-          }
+        const weight = q.weight || 0;
+        
+        // Si c'est une notation 0-5
+        if (q.type === 'range') {
+          totalPointsPossible += 5 * weight;
+          totalPointsGained += (parseFloat(responses[q.id]) || 0) * weight;
+        }
+        
+        // Intégration du calcul normatif dans le score incendie
+        if (q.id === 'nb_extincteurs') {
+          const normWeight = 20; // Poids fort pour la conformité légale
+          totalPointsPossible += 5 * normWeight;
+          totalPointsGained += scoreNormeExtincteur * normWeight;
         }
       });
     });
 
-    return totalWeight > 0 ? Math.round((gainedWeight / totalWeight) * 100) : 0;
-  },
+    const finalScore = totalPointsPossible > 0 
+      ? Math.round((totalPointsGained / totalPointsPossible) * 100) 
+      : 0;
 
-  // Calcul des scores par catégorie (pour le graphique Radar)
-  getCategoryScores: () => {
-    const responses = get().responses;
-    const scores = {};
-
-    RISK_QUESTIONS.forEach(section => {
-      let catTotal = 0;
-      let catGained = 0;
-      let hasBoolean = false;
-
-      section.questions.forEach(q => {
-        if (q.type === 'boolean') {
-          hasBoolean = true;
-          catTotal += (q.weight || 10);
-          if (responses[q.id] === 'Oui') catGained += (q.weight || 10);
-        }
-      });
-
-      if (hasBoolean) {
-        scores[section.id] = {
-          percentage: catTotal > 0 ? Math.round((catGained / catTotal) * 100) : 0
-        };
-      }
-    });
-
-    return scores;
+    localStorage.setItem('risk-inspect-data', JSON.stringify(responses));
+    return finalScore;
   }
 }));
