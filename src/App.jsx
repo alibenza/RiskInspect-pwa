@@ -1,142 +1,95 @@
-import { useState, useEffect } from 'react'
-import { Menu, X } from 'lucide-react'
-import Dashboard from './components/Dashboard'
-import InspectionForm from './components/InspectionForm'
-import { useInspectionStore } from './hooks/useInspectionStore'
-import './styles/index.css'
+import React, { useState } from 'react';
+import { LayoutDashboard, ClipboardCheck, History, Settings, Bell } from 'lucide-react';
+import Dashboard from './components/Dashboard'; // Ton composant de scoring
+import RiskForm from './components/RiskForm';   // Ton composant de saisie
 
-/**
- * Composant principal de l'application RiskInspect PWA
- * Gère la navigation et l'état global de l'inspection
- */
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard')
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { inspectionData } = useInspectionStore()
-
-  useEffect(() => {
-    // Mettre à jour le titre du document
-    document.title = 'RiskInspect - Inspection de Sécurité'
-  }, [])
-
-  const toggleMenu = () => setMobileMenuOpen(!mobileMenuOpen)
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-light to-gray-50">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white shadow-md border-b-4 border-primary">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">RI</span>
-              </div>
-              <h1 className="text-2xl font-bold text-primary hidden sm:block">
-                RiskInspect
-              </h1>
-            </div>
-
-            {/* Navigation Desktop */}
-            <nav className="hidden md:flex space-x-1">
-              <NavButton
-                label="📊 Tableau de Bord"
-                active={currentPage === 'dashboard'}
-                onClick={() => setCurrentPage('dashboard')}
-              />
-              <NavButton
-                label="✅ Nouvelle Inspection"
-                active={currentPage === 'form'}
-                onClick={() => setCurrentPage('form')}
-              />
-            </nav>
-
-            {/* Hamburger Menu Mobile */}
-            <button
-              onClick={toggleMenu}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition"
-              aria-label="Menu"
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6 text-primary" />
-              ) : (
-                <Menu className="w-6 h-6 text-primary" />
-              )}
-            </button>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden pb-4 space-y-2 animate-in slide-in-from-top">
-              <button
-                onClick={() => {
-                  setCurrentPage('dashboard')
-                  setMobileMenuOpen(false)
-                }}
-                className={`w-full text-left px-4 py-2 rounded-lg transition ${
-                  currentPage === 'dashboard'
-                    ? 'bg-primary text-white'
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                📊 Tableau de Bord
-              </button>
-              <button
-                onClick={() => {
-                  setCurrentPage('form')
-                  setMobileMenuOpen(false)
-                }}
-                className={`w-full text-left px-4 py-2 rounded-lg transition ${
-                  currentPage === 'form'
-                    ? 'bg-primary text-white'
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                ✅ Nouvelle Inspection
-              </button>
-            </div>
-          )}
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
+      {/* HEADER */}
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-blue-900">RiskInspect</h1>
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Expertise Terrain</p>
         </div>
+        <button className="p-2 bg-slate-100 rounded-full relative">
+          <Bell size={20} className="text-slate-600" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+        </button>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentPage === 'dashboard' ? (
-          <Dashboard />
-        ) : (
-          <InspectionForm onComplete={() => setCurrentPage('dashboard')} />
+      {/* CONTENU PRINCIPAL */}
+      <main className="max-w-md mx-auto p-4 space-y-6">
+        {activeTab === 'dashboard' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Dashboard />
+          </div>
+        )}
+        
+        {activeTab === 'inspect' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-6">
+              <h2 className="text-lg font-bold mb-2">Nouvelle Inspection</h2>
+              <p className="text-sm text-slate-500">Remplissez les points de contrôle pour générer le score.</p>
+            </div>
+            <RiskForm />
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="text-center py-20">
+            <History size={48} className="mx-auto text-slate-300 mb-4" />
+            <p className="text-slate-500 font-medium">Aucun historique disponible</p>
+          </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-12 bg-secondary text-white py-6 text-center">
-        <p className="text-sm">
-          RiskInspect © 2026 - Inspection de Sécurité sur le Terrain
-        </p>
-        <p className="text-xs mt-2 opacity-75">
-          {navigator.onLine ? '🟢 Connecté' : '🔴 Mode hors-ligne'}
-        </p>
-      </footer>
+      {/* NAVIGATION BASSE (BOTTOM NAV) */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-3 flex justify-between items-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <NavButton 
+          active={activeTab === 'dashboard'} 
+          onClick={() => setActiveTab('dashboard')}
+          icon={<LayoutDashboard size={24} />}
+          label="Stats"
+        />
+        <NavButton 
+          active={activeTab === 'inspect'} 
+          onClick={() => setActiveTab('inspect')}
+          icon={<ClipboardCheck size={24} />}
+          label="Inspecter"
+        />
+        <NavButton 
+          active={activeTab === 'history'} 
+          onClick={() => setActiveTab('history')}
+          icon={<History size={24} />}
+          label="Historique"
+        />
+        <NavButton 
+          active={activeTab === 'settings'} 
+          onClick={() => setActiveTab('settings')}
+          icon={<Settings size={24} />}
+          label="Profil"
+        />
+      </nav>
     </div>
-  )
+  );
 }
 
-/**
- * Composant bouton de navigation réutilisable
- */
-function NavButton({ label, active, onClick }) {
+// Sous-composant pour les boutons de navigation
+function NavButton({ active, icon, label, onClick }) {
   return (
-    <button
+    <button 
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-medium transition ${
-        active
-          ? 'bg-primary text-white shadow-lg'
-          : 'text-secondary hover:bg-gray-100'
+      className={`flex flex-col items-center space-y-1 transition-all ${
+        active ? 'text-blue-600 scale-110' : 'text-slate-400 hover:text-slate-600'
       }`}
     >
-      {label}
+      {icon}
+      <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
     </button>
-  )
+  );
 }
 
-export default App
+export default App;
