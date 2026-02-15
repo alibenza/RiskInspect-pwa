@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { RISK_QUESTIONS } from '../constants/questions';
+import { RISK_QUESTIONS } from '../components/questions.js';;
 
 export const useInspectionStore = create((set, get) => ({
   responses: {},
