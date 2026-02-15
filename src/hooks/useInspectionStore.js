@@ -2,25 +2,74 @@ import { create } from 'zustand';
 import { RISK_QUESTIONS } from '../components/questions';
 
 export const useInspectionStore = create((set, get) => ({
+  // Configuration des questions (chargée par défaut depuis le fichier questions.js)
+  questionsConfig: RISK_QUESTIONS,
   responses: {},
   
-  setResponse: (id, value) => set((state) => ({
-    responses: { ...state.responses, [id]: value }
-  })),
+  // --- ACTIONS POUR LES RÉPONSES ---
+  setResponse: (id, value) => set((state) => {
+    const newResponses = { ...state.responses, [id]: value };
+    localStorage.setItem('risk-inspect-data', JSON.stringify(newResponses));
+    return { responses: newResponses };
+  }),
 
-  resetInspection: () => set({ responses: {} }),
-
-  loadFromLocalStorage: () => {
-    const saved = localStorage.getItem('risk-inspect-data');
-    if (saved) set({ responses: JSON.parse(saved) });
+  resetInspection: () => {
+    localStorage.removeItem('risk-inspect-data');
+    set({ responses: {} });
   },
 
+  // --- ACTIONS POUR LA STRUCTURE DYNAMIQUE (BOUTONS) ---
+  addSection: (title) => set((state) => {
+    const newConfig = [
+      ...state.questionsConfig, 
+      { id: `sec_${Date.now()}`, title: title, questions: [] }
+    ];
+    localStorage.setItem('risk-inspect-config', JSON.stringify(newConfig));
+    return { questionsConfig: newConfig };
+  }),
+
+  addQuestion: (sectionId, label, type, weight = 10) => set((state) => {
+    const newConfig = state.questionsConfig.map(section => 
+      section.id === sectionId 
+        ? { 
+            ...section, 
+            questions: [...section.questions, { 
+              id: `q_${Date.now()}`, 
+              label, 
+              type, 
+              weight: type === 'range' ? weight : 0 
+            }] 
+          }
+        : section
+    );
+    localStorage.setItem('risk-inspect-config', JSON.stringify(newConfig));
+    return { questionsConfig: newConfig };
+  }),
+
+  removeSection: (sectionId) => set((state) => {
+    const newConfig = state.questionsConfig.filter(s => s.id !== sectionId);
+    localStorage.setItem('risk-inspect-config', JSON.stringify(newConfig));
+    return { questionsConfig: newConfig };
+  }),
+
+  // --- CHARGEMENT ---
+  loadFromLocalStorage: () => {
+    const savedData = localStorage.getItem('risk-inspect-data');
+    const savedConfig = localStorage.getItem('risk-inspect-config');
+    
+    set({ 
+      responses: savedData ? JSON.parse(savedData) : {},
+      questionsConfig: savedConfig ? JSON.parse(savedConfig) : RISK_QUESTIONS
+    });
+  },
+
+  // --- MOTEUR DE CALCUL PONDÉRÉ ---
   calculateScore: () => {
-    const responses = get().responses;
+    const { responses, questionsConfig } = get();
     let totalPointsPossible = 0;
     let totalPointsGained = 0;
 
-    // --- LOGIQUE SPÉCIFIQUE : EXTINCTEURS ---
+    // Logique spécifique : Extincteurs
     const surface = parseFloat(responses['superficie_batie']) || 0;
     const nbReel = parseFloat(responses['nb_extincteurs']) || 0;
     const nbTheorique = Math.ceil(surface / 150);
@@ -30,31 +79,26 @@ export const useInspectionStore = create((set, get) => ({
       scoreNormeExtincteur = Math.min(5, (nbReel / nbTheorique) * 5);
     }
 
-    // --- CALCUL GLOBAL PONDÉRÉ ---
-    RISK_QUESTIONS.forEach(section => {
+    // Parcours de la configuration dynamique
+    questionsConfig.forEach(section => {
       section.questions.forEach(q => {
         const weight = q.weight || 0;
         
-        // Si c'est une notation 0-5
         if (q.type === 'range') {
           totalPointsPossible += 5 * weight;
           totalPointsGained += (parseFloat(responses[q.id]) || 0) * weight;
         }
         
-        // Intégration du calcul normatif dans le score incendie
         if (q.id === 'nb_extincteurs') {
-          const normWeight = 20; // Poids fort pour la conformité légale
+          const normWeight = 20; 
           totalPointsPossible += 5 * normWeight;
           totalPointsGained += scoreNormeExtincteur * normWeight;
         }
       });
     });
 
-    const finalScore = totalPointsPossible > 0 
+    return totalPointsPossible > 0 
       ? Math.round((totalPointsGained / totalPointsPossible) * 100) 
       : 0;
-
-    localStorage.setItem('risk-inspect-data', JSON.stringify(responses));
-    return finalScore;
   }
 }));
