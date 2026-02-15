@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Download, RotateCcw, ClipboardList, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { RotateCcw, ClipboardList, ShieldCheck, AlertTriangle, FileText } from 'lucide-react'
 import RiskChart from './RiskChart'
+import ExportPDF from './ExportPDF' // Import du nouveau composant
 import { useInspectionStore } from '../hooks/useInspectionStore'
 
-/**
- * Tableau de Bord Principal - Version Corrigée
- */
 function Dashboard() {
   const { responses, resetInspection, calculateScore, loadFromLocalStorage } = useInspectionStore()
   const [loading, setLoading] = useState(true)
@@ -35,7 +33,7 @@ function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
       {/* SECTION SCORE GLOBAL */}
       <div className={`p-6 rounded-3xl ${status.bg} border border-white shadow-sm relative overflow-hidden`}>
@@ -63,15 +61,13 @@ function Dashboard() {
                 className="transition-all duration-1000 ease-out"
               />
             </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-slate-400 uppercase">
-              Score
-            </div>
           </div>
         </div>
       </div>
 
       {hasData ? (
         <>
+          {/* GRAPHIQUE */}
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <h3 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-tight flex items-center">
               <ClipboardList className="mr-2 w-4 h-4 text-blue-600" />
@@ -82,20 +78,17 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pb-8">
+          {/* ACTIONS D'EXPORTATION ET RESET */}
+          <div className="space-y-3">
+            {/* Nouveau composant ExportPDF qui contient le bouton stylisé */}
+            <ExportPDF />
+
             <button
-              onClick={() => window.print()}
-              className="flex items-center justify-center space-x-2 bg-blue-600 text-white p-4 rounded-2xl font-bold text-sm shadow-lg shadow-blue-100 active:scale-95 transition-transform"
-            >
-              <Download size={18} />
-              <span>Imprimer</span>
-            </button>
-            <button
-              onClick={() => { if(window.confirm("Effacer l'inspection ?")) resetInspection() }}
-              className="flex items-center justify-center space-x-2 bg-white text-slate-600 p-4 rounded-2xl font-bold text-sm border border-slate-200 active:scale-95 transition-transform"
+              onClick={() => { if(window.confirm("Effacer toutes les données de l'inspection ?")) resetInspection() }}
+              className="w-full flex items-center justify-center space-x-2 bg-white text-red-500 p-4 rounded-2xl font-bold text-sm border border-red-50 active:scale-95 transition-transform"
             >
               <RotateCcw size={18} />
-              <span>Reset</span>
+              <span>Réinitialiser l'audit</span>
             </button>
           </div>
         </>
