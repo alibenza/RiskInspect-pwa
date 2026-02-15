@@ -1,9 +1,24 @@
-import { Chart as ChartJS, RadarController, RadarElement, PointElement, LineElement, Filler, Legend, Tooltip } from 'chart.js'
+import { 
+  Chart as ChartJS, 
+  RadialLinearScale, 
+  PointElement, 
+  LineElement, 
+  Filler, 
+  Legend, 
+  Tooltip 
+} from 'chart.js'
 import { Radar } from 'react-chartjs-2'
 import { INSPECTION_CATEGORIES } from '../utils/scoring'
 
-// Enregistrer les composants Chart.js
-ChartJS.register(RadarController, RadarElement, PointElement, LineElement, Filler, Legend, Tooltip)
+// Enregistrer les composants corrects pour le graphique Radar
+ChartJS.register(
+  RadialLinearScale, 
+  PointElement, 
+  LineElement, 
+  Filler, 
+  Legend, 
+  Tooltip
+)
 
 /**
  * Graphique Radar pour visualiser les scores par catégorie
@@ -37,7 +52,7 @@ function RiskChart({ categoryScores }) {
 
   const options = {
     responsive: true,
-    maintainAspectRatio: true,
+    maintainAspectRatio: false, // Changé à false pour mieux remplir la div h-96
     plugins: {
       legend: {
         display: true,
@@ -86,7 +101,7 @@ function RiskChart({ categoryScores }) {
       {Object.keys(categoryScores).length > 0 ? (
         <Radar data={chartData} options={options} />
       ) : (
-        <div className="flex items-center justify-center h-full text-secondary">
+        <div className="flex items-center justify-center h-full text-slate-500 italic">
           <p>Aucune donnée - Commencez une inspection</p>
         </div>
       )}
