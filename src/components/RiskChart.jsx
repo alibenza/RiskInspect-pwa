@@ -1,112 +1,71 @@
-import { 
-  Chart as ChartJS, 
-  RadialLinearScale, 
-  PointElement, 
-  LineElement, 
-  Filler, 
-  Legend, 
-  Tooltip 
-} from 'chart.js'
-import { Radar } from 'react-chartjs-2'
-import { INSPECTION_CATEGORIES } from '../utils/scoring'
+import React from 'react';
+import {
+  Chart as ChartJS,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Radar } from 'react-chartjs-2';
+import { useInspectionStore } from '../hooks/useInspectionStore';
 
-// Enregistrer les composants corrects pour le graphique Radar
-ChartJS.register(
-  RadialLinearScale, 
-  PointElement, 
-  LineElement, 
-  Filler, 
-  Legend, 
-  Tooltip
-)
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-/**
- * Graphique Radar pour visualiser les scores par catégorie
- */
-function RiskChart({ categoryScores }) {
-  // Préparer les données pour le graphique
-  const labels = Object.values(INSPECTION_CATEGORIES).map(cat => cat.name)
-  const data = Object.values(INSPECTION_CATEGORIES).map(cat => 
-    categoryScores[cat.id]?.percentage || 0
-  )
-  const colors = Object.values(INSPECTION_CATEGORIES).map(cat => cat.color)
+const RiskChart = () => {
+  const { questionsConfig, responses } = useInspectionStore();
 
-  const chartData = {
+  // 1. Extraire dynamiquement les noms des sections et calculer leur score moyen
+  const labels = questionsConfig.map(section => section.title.substring(0, 20) + "..."); // On tronque pour la lisibilité
+  
+  const dataValues = questionsConfig.map(section => {
+    const rangeQuestions = section.questions.filter(q => q.type === 'range');
+    
+    if (rangeQuestions.length === 0) return 0;
+
+    let totalPoints = 0;
+    rangeQuestions.forEach(q => {
+      totalPoints += parseFloat(responses[q.id]) || 0;
+    });
+
+    // Moyenne ramenée sur 100 pour le graphique
+    return (totalPoints / (rangeQuestions.length * 5)) * 100;
+  });
+
+  const data = {
     labels,
     datasets: [
       {
-        label: 'Score de Conformité (%)',
-        data,
-        borderColor: '#1e40af',
-        backgroundColor: 'rgba(30, 64, 175, 0.1)',
+        label: 'Niveau de Conformité %',
+        data: dataValues,
+        backgroundColor: 'rgba(37, 99, 235, 0.2)', // Blue-600 avec transparence
+        borderColor: 'rgba(37, 99, 235, 1)',
         borderWidth: 2,
-        pointRadius: 5,
-        pointBackgroundColor: colors,
+        pointBackgroundColor: 'rgba(37, 99, 235, 1)',
         pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        tension: 0.4,
-        fill: true
-      }
-    ]
-  }
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(37, 99, 235, 1)',
+      },
+    ],
+  };
 
   const options = {
-    responsive: true,
-    maintainAspectRatio: false, // Changé à false pour mieux remplir la div h-96
-    plugins: {
-      legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          font: { size: 12, weight: 'bold' },
-          padding: 20,
-          usePointStyle: true
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        padding: 12,
-        titleFont: { size: 14, weight: 'bold' },
-        bodyFont: { size: 12 },
-        callbacks: {
-          label: (context) => {
-            return `${context.label}: ${context.parsed.r}%`
-          }
-        }
-      }
-    },
     scales: {
       r: {
-        beginAtZero: true,
-        max: 100,
-        min: 0,
-        ticks: {
-          stepSize: 20,
-          font: { size: 11 },
-          color: '#64748b'
-        },
-        grid: {
-          color: 'rgba(100, 116, 139, 0.1)'
-        },
-        pointLabels: {
-          font: { size: 12, weight: 'bold' },
-          color: '#0f172a'
-        }
-      }
-    }
-  }
+        angleLines: { display: true },
+        suggestedMin: 0,
+        suggestedMax: 100,
+        ticks: { stepSize: 20, display: false }
+      },
+    },
+    plugins: {
+      legend: { display: false }
+    },
+    maintainAspectRatio: false
+  };
 
-  return (
-    <div className="w-full h-96">
-      {Object.keys(categoryScores).length > 0 ? (
-        <Radar data={chartData} options={options} />
-      ) : (
-        <div className="flex items-center justify-center h-full text-slate-500 italic">
-          <p>Aucune donnée - Commencez une inspection</p>
-        </div>
-      )}
-    </div>
-  )
-}
+  return <Radar data={data} options={options} />;
+};
 
-export default RiskChart
+export default RiskChart;
