@@ -1,5 +1,5 @@
 import React from 'react';
-import { RISK_QUESTIONS } from 'src/components/constants/questions.js';
+import { RISK_QUESTIONS } from 'src/components/questions';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 import { ClipboardList, CheckCircle2, Circle } from 'lucide-react';
 
