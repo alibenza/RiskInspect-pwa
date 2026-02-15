@@ -2,13 +2,17 @@ import { create } from 'zustand';
 import { RISK_QUESTIONS } from '../components/questions';
 
 export const useInspectionStore = create((set, get) => ({
-  // Configuration des questions (chargée par défaut depuis le fichier questions.js)
   questionsConfig: RISK_QUESTIONS,
-  responses: {},
+  responses: {}, // Chaque clé contiendra désormais { value: ..., comment: ... }
   
-  // --- ACTIONS POUR LES RÉPONSES ---
-  setResponse: (id, value) => set((state) => {
-    const newResponses = { ...state.responses, [id]: value };
+  // --- ACTIONS POUR LES RÉPONSES (Modifié pour gérer valeur + commentaire) ---
+  setResponse: (id, field, val) => set((state) => {
+    // field peut être 'value' (pour la note/chiffre) ou 'comment' (pour le texte)
+    const current = state.responses[id] || { value: '', comment: '' };
+    const newResponses = { 
+      ...state.responses, 
+      [id]: { ...current, [field]: val } 
+    };
     localStorage.setItem('risk-inspect-data', JSON.stringify(newResponses));
     return { responses: newResponses };
   }),
@@ -18,7 +22,7 @@ export const useInspectionStore = create((set, get) => ({
     set({ responses: {} });
   },
 
-  // --- ACTIONS POUR LA STRUCTURE DYNAMIQUE (BOUTONS) ---
+  // --- ACTIONS POUR LA STRUCTURE DYNAMIQUE ---
   addSection: (title) => set((state) => {
     const newConfig = [
       ...state.questionsConfig, 
@@ -63,15 +67,16 @@ export const useInspectionStore = create((set, get) => ({
     });
   },
 
-  // --- MOTEUR DE CALCUL PONDÉRÉ ---
+  // --- MOTEUR DE CALCUL PONDÉRÉ (Adapté pour lire .value) ---
   calculateScore: () => {
     const { responses, questionsConfig } = get();
     let totalPointsPossible = 0;
     let totalPointsGained = 0;
 
     // Logique spécifique : Extincteurs
-    const surface = parseFloat(responses['superficie_batie']) || 0;
-    const nbReel = parseFloat(responses['nb_extincteurs']) || 0;
+    // On va chercher .value pour les calculs
+    const surface = parseFloat(responses['superficie_batie']?.value) || 0;
+    const nbReel = parseFloat(responses['nb_extincteurs']?.value) || 0;
     const nbTheorique = Math.ceil(surface / 150);
     
     let scoreNormeExtincteur = 0;
@@ -79,14 +84,14 @@ export const useInspectionStore = create((set, get) => ({
       scoreNormeExtincteur = Math.min(5, (nbReel / nbTheorique) * 5);
     }
 
-    // Parcours de la configuration dynamique
     questionsConfig.forEach(section => {
       section.questions.forEach(q => {
         const weight = q.weight || 0;
+        const resp = responses[q.id]; // Récupère l'objet {value, comment}
         
         if (q.type === 'range') {
           totalPointsPossible += 5 * weight;
-          totalPointsGained += (parseFloat(responses[q.id]) || 0) * weight;
+          totalPointsGained += (parseFloat(resp?.value) || 0) * weight;
         }
         
         if (q.id === 'nb_extincteurs') {
