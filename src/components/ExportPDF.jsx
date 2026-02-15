@@ -1,75 +1,113 @@
-import jsPDF from 'jspdf';
+import React from 'react';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { RISK_QUESTIONS } from './questions';
 import { useInspectionStore } from '../hooks/useInspectionStore';
+import { FileDown } from 'lucide-react';
 
 const ExportPDF = () => {
-  const { responses, calculateScore } = useInspectionStore();
+  const { questionsConfig, responses, calculateScore } = useInspectionStore();
 
   const generatePDF = () => {
     const doc = new jsPDF();
     const globalScore = calculateScore();
     const date = new Date().toLocaleDateString();
 
-    // --- EN-TÊTE DU DOCUMENT ---
+    // --- EN-TÊTE DU RAPPORT ---
     doc.setFontSize(20);
-    doc.setTextColor(30, 64, 175); // Bleu primaire
-    doc.text("RAPPORT D'INSPECTION DE RISQUE", 14, 22);
+    doc.setTextColor(40);
+    doc.text('RAPPORT DE VISITE DE RISQUE', 105, 20, { align: 'center' });
     
     doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Généré le : ${date} | Score Global : ${globalScore}%`, 14, 30);
-    doc.line(14, 35, 196, 35);
+    doc.text(`Date de l'inspection : ${date}`, 105, 30, { align: 'center' });
+    doc.text(`Score Global de Conformité : ${globalScore}%`, 105, 38, { align: 'center' });
 
-    // --- PRÉPARATION DES DONNÉES DU TABLEAU ---
-    const tableRows = [];
+    // Ligne de séparation
+    doc.setLineWidth(0.5);
+    doc.line(20, 45, 190, 45);
 
-    RISK_QUESTIONS.forEach(section => {
-      // Ajouter une ligne de titre de section
-      tableRows.push([{ content: section.title, colSpan: 2, styles: { fillColor: [241, 245, 249], fontStyle: 'bold' } }]);
-      
-      section.questions.forEach(q => {
-        let value = responses[q.id] || "N/A";
+    let currentY = 55;
+
+    // --- PARCOURS DES SECTIONS ---
+    questionsConfig.forEach((section) => {
+      // Vérifier s'il y a des réponses dans cette section
+      const sectionHasData = section.questions.some(q => responses[q.id]);
+      if (!sectionHasData) return;
+
+      // Ajouter une nouvelle page si nécessaire
+      if (currentY > 240) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setTextColor(37, 99, 235); // Bleu pro
+      doc.text(section.title, 14, currentY);
+      currentY += 7;
+
+      const tableRows = [];
+
+      section.questions.forEach((q) => {
+        const resp = responses[q.id];
+        if (!resp) return;
+
+        let displayValue = "";
         
-        // Formatage spécial pour le nombre d'extincteurs
-        if (q.id === 'nb_extincteurs' && responses['superficie_batie']) {
-          const requis = Math.ceil(responses['superficie_batie'] / 150);
-          value = `${value} (Requis: ${requis})`;
+        // Formater l'affichage selon le type
+        if (q.type === 'range') {
+          displayValue = `${resp.value || 0} / 5`;
+        } else if (q.id === 'nb_extincteurs') {
+            const surface = parseFloat(responses['superficie_batie']?.value) || 0;
+            const nbTheorique = Math.ceil(surface / 150);
+            displayValue = `${resp.value || 0} (Besoin: ${nbTheorique})`;
+        } else {
+          displayValue = resp.value || "-";
         }
 
-        tableRows.push([q.label, value.toString()]);
+        tableRows.push([
+          q.label,
+          displayValue,
+          resp.comment || "" // On ajoute les observations libres
+        ]);
       });
-    });
 
-    // --- GÉNÉRATION DU TABLEAU ---
-    doc.autoTable({
-      startY: 40,
-      head: [['Point de Contrôle', 'Valeur / Note']],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: { fillColor: [30, 64, 175] },
-      styles: { fontSize: 9, cellPadding: 3 },
-      columnStyles: { 0: { cellWidth: 120 }, 1: { halign: 'center' } }
+      // Génération du tableau pour la section
+      doc.autoTable({
+        startY: currentY,
+        head: [['Point de contrôle', 'Donnée / Note', 'Observations & Commentaires']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [51, 65, 85] },
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 50 },
+          1: { cellWidth: 35, fontStyle: 'bold' },
+          2: { cellWidth: 'auto', fontStyle: 'italic' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      currentY = doc.lastAutoTable.finalY + 15;
     });
 
     // --- PIED DE PAGE ---
     const pageCount = doc.internal.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.text(`Page ${i} sur ${pageCount} - Rapport RiskInspect`, 196, 285, { align: 'right' });
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`CIAR Inspect PWA - Page ${i} sur ${pageCount}`, 105, 285, { align: 'center' });
     }
 
-    doc.save(`Rapport_Inspection_${date.replace(/\//g, '-')}.pdf`);
+    doc.save(`Rapport_Risque_${date.replace(/\//g, '-')}.pdf`);
   };
 
   return (
     <button
       onClick={generatePDF}
-      className="w-full flex items-center justify-center space-x-2 bg-slate-900 text-white p-4 rounded-2xl font-bold shadow-xl active:scale-95 transition-transform mt-4"
+      className="w-full flex items-center justify-center space-x-3 bg-blue-600 text-white p-5 rounded-2xl font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
-      <span>Exporter le Rapport PDF</span>
+      <FileDown size={22} />
+      <span>EXPORTER LE RAPPORT COMPLET (PDF)</span>
     </button>
   );
 };
