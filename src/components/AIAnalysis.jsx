@@ -11,29 +11,37 @@ const AIAnalysis = () => {
     setLoading(true);
     setError(null);
     try {
-      // Préparation des données pour l'IA
+      // Construction d'un rapport textuel détaillé pour l'IA
       const dataSummary = questionsConfig.map(section => {
         const sectionResponses = section.questions
           .map(q => {
             const r = responses[q.id];
-            return r ? `- ${q.label} : ${r.value || r.score + '/5'} ${r.comment ? `(Note: ${r.comment})` : ''}` : null;
+            if (!r) return null;
+            return `[${q.label}] : Réponse=${r.value || r.score + '/5'}. Observation technique: ${r.comment || 'Aucune'}`;
           })
           .filter(Boolean)
           .join('\n');
-        return `### ${section.title}\n${sectionResponses}`;
+        return `SECTION: ${section.title}\n${sectionResponses}`;
       }).join('\n\n');
 
-      const promptStrict = `Tu es un expert en audit de risques industriels IARD. 
-      Voici les données relevées sur le site :
-      
+      const promptStrict = `Tu es un Ingénieur Expert en Prévention des Risques IARD (Incendie, Accidents, Risques Divers) avec 20 ans d'expérience. 
+      Ton rôle est de rédiger une synthèse d'expertise technique approfondie pour un assureur.
+
+      VOICI LES DONNÉES DU SITE :
       ${dataSummary}
 
-      Analyse ces données et réponds EXCLUSIVEMENT au format JSON suivant : 
+      DIRECTIVES DE RÉDACTION :
+      1. SYNTHÈSE : Rédige un paragraphe de 10 à 15 lignes. Analyse la cohérence globale du risque. Ne te contente pas de lister, INTERPRÈTE (ex: "La faiblesse de la maintenance GMAO corrélée à l'ancienneté des transformateurs crée un risque majeur d'interruption d'activité").
+      2. POINTS FORTS : Identifie 3 points techniques précis qui rassurent l'assureur.
+      3. POINTS FAIBLES : Identifie 3 vulnérabilités critiques (techniques, organisationnelles ou humaines).
+      4. RECOMMANDATIONS : Propose 3 actions prioritaires avec un argumentaire sur le retour sur investissement sécurité.
+
+      Réponds EXCLUSIVEMENT au format JSON : 
       {
-        "synthese": "Analyse globale de l'assurabilité en 5 lignes maximum",
-        "pointsForts": ["point fort 1", "point fort 2", "point fort 3"],
-        "pointsFaibles": ["point faible 1", "point faible 2", "point faible 3"],
-        "recommandations": ["action 1", "action 2", "action 3"]
+        "synthese": "Texte long et détaillé ici...",
+        "pointsForts": ["...", "...", "..."],
+        "pointsFaibles": ["...", "...", "..."],
+        "recommandations": ["...", "...", "..."]
       }`;
 
       const r = await fetch("https://api.mistral.ai/v1/chat/completions", {
@@ -45,11 +53,11 @@ const AIAnalysis = () => {
         body: JSON.stringify({
           model: "mistral-small-latest",
           messages: [
-            { role: "system", content: "Tu es un expert en risque IARD. Tu ne parles qu'en JSON." }, 
+            { role: "system", content: "Tu es un expert en ingénierie du risque. Ton ton est formel, technique et analytique." }, 
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.1
+          temperature: 0.7 // Augmenté pour plus de richesse rédactionnelle
         })
       });
 
@@ -60,7 +68,7 @@ const AIAnalysis = () => {
       setAiResults(content);
     } catch (e) {
       console.error(e);
-      setError("Erreur d'analyse. Vérifiez votre connexion ou la clé API.");
+      setError("Erreur lors de la génération de l'expertise.");
     } finally {
       setLoading(false);
     }
@@ -71,50 +79,45 @@ const AIAnalysis = () => {
       <div className="bg-slate-900 p-8 rounded-[2rem] text-white shadow-xl">
         <div className="flex items-center space-x-3">
           <BrainCircuit className="text-indigo-400" />
-          <h2 className="text-xl font-bold uppercase">Expertise IA</h2>
+          <h2 className="text-xl font-bold uppercase tracking-tighter">Expertise IA Augmentée</h2>
         </div>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-center gap-3 text-red-600 text-xs font-bold">
-          <AlertCircle size={18} />
-          {error}
-        </div>
-      )}
 
       {!aiResults && !loading ? (
         <button 
           onClick={runAnalysis} 
-          disabled={Object.keys(responses).length === 0}
-          className={`w-full py-12 border-2 border-dashed rounded-[2rem] flex flex-col items-center gap-3 transition-all ${
-            Object.keys(responses).length === 0 
-            ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed' 
-            : 'border-slate-200 bg-white hover:border-indigo-300 group'
-          }`}
+          className="w-full py-12 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white flex flex-col items-center gap-3 hover:border-indigo-400 transition-all group"
         >
-          <Sparkles className={Object.keys(responses).length === 0 ? 'text-slate-300' : 'text-indigo-600 group-hover:scale-110 transition-transform'} size={32} />
-          <span className="font-bold uppercase text-xs tracking-widest text-slate-500">
-            {Object.keys(responses).length === 0 ? "Remplissez l'audit pour lancer l'IA" : "Lancer le diagnostic"}
-          </span>
+          <Sparkles className="text-indigo-600 group-hover:animate-spin-slow" size={32} />
+          <span className="font-bold uppercase text-[10px] tracking-[0.2em] text-slate-500">Générer le rapport d'expertise détaillé</span>
         </button>
       ) : loading ? (
         <div className="p-12 text-center bg-white rounded-[2rem] shadow-sm border border-slate-100">
           <Loader2 className="animate-spin mx-auto text-indigo-600 mb-4" size={32} />
-          <p className="font-black text-[10px] uppercase tracking-widest text-slate-400">Analyse Mistral en cours...</p>
+          <p className="font-black text-[10px] uppercase tracking-widest text-slate-400">L'expert IA analyse les données techniques...</p>
         </div>
       ) : (
-        <div className="bg-white p-6 rounded-[2rem] border border-green-100 animate-in fade-in duration-500">
-          <div className="flex items-center gap-2 mb-4 text-green-600">
+        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm animate-in zoom-in-95 duration-500">
+          <div className="flex items-center gap-2 mb-6 text-indigo-600">
             <ShieldCheck size={20} />
-            <span className="text-xs font-black uppercase tracking-widest">Analyse Terminée</span>
+            <span className="text-xs font-black uppercase tracking-widest">Synthèse de l'Ingénieur Conseil</span>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed italic mb-6">"{aiResults.synthese}"</p>
-          <button 
-            onClick={() => setAiResults(null)}
-            className="text-[10px] font-bold text-slate-400 uppercase hover:text-indigo-600 transition-colors"
-          >
-            ↻ Relancer une analyse
-          </button>
+          
+          {/* Affichage de la synthèse riche */}
+          <div className="prose prose-slate">
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap first-letter:text-3xl first-letter:font-bold first-letter:mr-2 first-letter:float-left">
+              {aiResults.synthese}
+            </p>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-slate-50">
+            <button 
+              onClick={() => setAiResults(null)}
+              className="text-[10px] font-bold text-slate-300 uppercase hover:text-red-500 transition-colors"
+            >
+              ↻ Réinitialiser l'analyse
+            </button>
+          </div>
         </div>
       )}
     </div>
