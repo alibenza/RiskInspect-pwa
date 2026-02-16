@@ -1,107 +1,69 @@
-import React, { useState, useEffect } from 'react'
-import { RotateCcw, ClipboardList, ShieldCheck, AlertTriangle, FileText } from 'lucide-react'
-import RiskChart from './RiskChart'
-import ExportPDF from './ExportPDF' // Import du nouveau composant
-import { useInspectionStore } from '../hooks/useInspectionStore'
+import React from 'react';
+import { useInspectionStore } from '../hooks/useInspectionStore';
+import { Bar, Radar } from 'react-chartjs-2';
+import { ShieldCheck, AlertTriangle, Activity, Trophy } from 'lucide-react';
+import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 
-function Dashboard() {
-  const { responses, resetInspection, calculateScore, loadFromLocalStorage } = useInspectionStore()
-  const [loading, setLoading] = useState(true)
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-  useEffect(() => {
-    loadFromLocalStorage()
-    setLoading(false)
-  }, [])
+const Dashboard = () => {
+  const { questionsConfig, responses } = useInspectionStore();
 
-  const globalScore = calculateScore()
-  
-  const getStatusConfig = (score) => {
-    if (score >= 80) return { color: '#16a34a', text: 'Excellent', icon: <ShieldCheck className="text-green-600" />, bg: 'bg-green-50' }
-    if (score >= 50) return { color: '#ea580c', text: 'Passable', icon: <AlertTriangle className="text-orange-600" />, bg: 'bg-orange-50' }
-    return { color: '#dc2626', text: 'Critique', icon: <AlertTriangle className="text-red-600" />, bg: 'bg-red-50' }
-  }
+  const sectionScores = questionsConfig.map(section => {
+    const scoredQuestions = section.questions.filter(q => responses[q.id]?.isScored);
+    if (scoredQuestions.length === 0) return { label: section.title, score: 0 };
+    const totalScore = scoredQuestions.reduce((acc, q) => acc + (Number(responses[q.id]?.score) || 0), 0);
+    return { label: section.title, score: Math.round((totalScore / (scoredQuestions.length * 5)) * 100) };
+  });
 
-  const status = getStatusConfig(globalScore)
-  const hasData = Object.keys(responses).length > 0
+  const globalScore = sectionScores.length > 0 
+    ? Math.round(sectionScores.reduce((acc, s) => acc + s.score, 0) / sectionScores.length) 
+    : 0;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+  const dataRadar = {
+    labels: sectionScores.map(s => s.label),
+    datasets: [{
+      label: 'Maîtrise du Risque %',
+      data: sectionScores.map(s => s.score),
+      backgroundColor: 'rgba(79, 70, 229, 0.2)',
+      borderColor: 'rgb(79, 70, 229)',
+      borderWidth: 2,
+    }]
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      
-      {/* SECTION SCORE GLOBAL */}
-      <div className={`p-6 rounded-3xl ${status.bg} border border-white shadow-sm relative overflow-hidden`}>
-        <div className="flex justify-between items-center relative z-10">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Score de Conformité</p>
-            <div className="flex items-baseline space-x-2">
-              <span className="text-5xl font-black text-slate-900">{globalScore}%</span>
-            </div>
-            <div className="mt-4 flex items-center space-x-2">
-              {status.icon}
-              <span className="font-bold text-sm uppercase">{status.text}</span>
-            </div>
-          </div>
-
-          <div className="w-24 h-24 relative">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="8" />
-              <circle
-                cx="50" cy="50" r="40" fill="none"
-                stroke={status.color}
-                strokeWidth="8"
-                strokeDasharray={`${globalScore * 2.51} 251`}
-                strokeLinecap="round"
-                className="transition-all duration-1000 ease-out"
-              />
-            </svg>
-          </div>
+    <div className="space-y-6 pb-24 animate-in fade-in">
+      {/* SCORE GLOBAL D'ASSURABILITÉ */}
+      <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Score d'Assurabilité</p>
+          <h3 className="text-3xl font-black text-slate-900">{globalScore}%</h3>
+        </div>
+        <div className={`p-4 rounded-2xl ${globalScore > 70 ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
+          {globalScore > 70 ? <ShieldCheck size={32} /> : <AlertTriangle size={32} />}
         </div>
       </div>
 
-      {hasData ? (
-        <>
-          {/* GRAPHIQUE */}
-<div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-  <h3 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-tight flex items-center">
-    <ClipboardList className="mr-2 w-4 h-4 text-blue-600" />
-    Profil de Risque
-  </h3>
-  <div className="h-72 w-full">
-      {/* On retire categoryScores={responses} car le composant est auto-suffisant */}
-      <RiskChart /> 
-  </div>
-</div>
-
-          {/* ACTIONS D'EXPORTATION ET RESET */}
-          <div className="space-y-3">
-            {/* Nouveau composant ExportPDF qui contient le bouton stylisé */}
-            <ExportPDF />
-
-            <button
-              onClick={() => { if(window.confirm("Effacer toutes les données de l'inspection ?")) resetInspection() }}
-              className="w-full flex items-center justify-center space-x-2 bg-white text-red-500 p-4 rounded-2xl font-bold text-sm border border-red-50 active:scale-95 transition-transform"
-            >
-              <RotateCcw size={18} />
-              <span>Réinitialiser l'audit</span>
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="bg-white p-10 rounded-3xl border border-dashed border-slate-300 text-center">
-          <p className="text-slate-400 text-sm italic">
-            Aucune donnée d'inspection.<br/>Allez dans l'onglet "Inspecter" pour commencer.
-          </p>
+      {/* RADAR CHART */}
+      <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Profil de Risque</h4>
+        <div className="h-64">
+          <Radar data={dataRadar} options={{ scales: { r: { min: 0, max: 100, ticks: { display: false } } }, plugins: { legend: { display: false } } }} />
         </div>
-      )}
-    </div>
-  )
-}
+      </div>
 
-export default Dashboard
+      {/* LISTE DES POINTS CRITIQUES */}
+      <div className="space-y-3">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Points de vigilance</h4>
+        {sectionScores.filter(s => s.score < 50).map(s => (
+          <div key={s.label} className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center space-x-3">
+            <Activity className="text-red-500" size={18} />
+            <span className="text-xs font-bold text-red-700">{s.label} à renforcer</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
