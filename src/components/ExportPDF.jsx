@@ -1,69 +1,68 @@
-import React from 'react';import { jsPDF } from "jspdf";import "jspdf-autotable";import { useInspectionStore } from '../hooks/useInspectionStore';import { Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-const ExportPDF = () => {
-  const { questionsConfig, responses, calculateScore } = useInspectionStore();
+export const exportToPdf = (responses, questionsConfig, aiAnalysisText) => {
+  const doc = new jsPDF();
+  const date = new Date().toLocaleDateString();
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    const scoreGlobal = calculateScore();
-    const date = new Date().toLocaleDateString();
+  // DESIGN DU HEADER
+  doc.setFillColor(30, 41, 59);
+  doc.rect(0, 0, 210, 40, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("RAPPORT D'EXPERTISE IARD", 15, 25);
+  doc.setFontSize(10);
+  doc.text(`Généré le : ${date}`, 15, 32);
 
-    // En-tête
-    doc.setFontSize(20);doc.setTextColor(37, 99, 235);doc.text("RAPPORT D'INSPECTION RISQUE", 14, 22);
-    doc.setFontSize(10);doc.setTextColor(100);doc.text(`Date: ${date} | Score de Conformité: ${scoreGlobal}%`, 14, 30);
+  let yPos = 50;
+
+  // SECTION IA : ANALYSE STRATÉGIQUE (Si disponible)
+  if (aiAnalysisText) {
+    doc.setTextColor(79, 70, 229);
+    doc.setFontSize(14);
+    doc.text("1. SYNTHÈSE DE L'EXPERT (IA)", 15, yPos);
+    yPos += 7;
     
-    let finalY = 35;
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    const splitAi = doc.splitTextToSize(aiAnalysisText, 180);
+    doc.text(splitAi, 15, yPos);
+    yPos += (splitAi.length * 5) + 10;
+  }
 
-    questionsConfig.forEach((section) => {
-      const tableRows = [];
-      section.questions.forEach((q) => {
-        const resp = responses[q.id];
-        if (!resp) return;
+  // SECTION TECHNIQUE : TABLEAU DES DONNÉES
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("2. DÉTAILS DES POINTS DE CONTRÔLE", 15, yPos);
+  yPos += 5;
 
-        // On affiche la valeur texte/chiffre
-        let displayValue = resp.value || "-";
-        
-        // On ajoute la note si l'interrupteur isScored est actif
-        if (resp.isScored) {
-          displayValue += `\n(Note: ${resp.score || 0}/5)`;
-        }
-
-        // Cas spécial pour les extincteurs (calcul auto)
-        if (q.id === 'nb_extincteurs') {
-          const surface = parseFloat(responses['superficie_batie']?.value) || 0;
-          const nbTheorique = Math.ceil(surface / 150);
-          displayValue += `\n[Besoin théorique: ${nbTheorique}]`;
-        }
-
-        tableRows.push([q.label, displayValue, resp.comment || "-"]);
-      });
-
-      if (tableRows.length > 0) {
-        doc.setFontSize(14);doc.setTextColor(30, 41, 59);
-        doc.text(section.title.toUpperCase(), 14, finalY + 10);
-        
-        doc.autoTable({
-          startY: finalY + 15,
-          head: [['Point de contrôle', 'Données / Note', 'Observations']],
-          body: tableRows,
-          theme: 'grid',
-          headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 50 }, 2: { cellWidth: 'auto' } },
-          styles: { fontSize: 8, cellPadding: 3 }
-        });
-        finalY = doc.lastAutoTable.finalY;
+  const tableRows = [];
+  questionsConfig.forEach(section => {
+    tableRows.push([{ content: section.title, colSpan: 3, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }]);
+    section.questions.forEach(q => {
+      const r = responses[q.id];
+      if (r && r.value) {
+        tableRows.push([
+          q.label,
+          r.isScored ? `${r.score}/5` : 'Info',
+          `${r.value}${r.comment ? '\nObs: ' + r.comment : ''}`
+        ]);
       }
     });
+  });
 
-    doc.save(`Rapport_Inspection_${date.replace(/\//g, '-')}.pdf`);
-  };
+  doc.autoTable({
+    startY: yPos,
+    head: [['Point de contrôle', 'Note', 'Détails / Observations']],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 8, cellPadding: 3 },
+    margin: { left: 15, right: 15 }
+  });
 
-  return (
-    <button onClick={generatePDF} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-3 shadow-lg active:scale-95 transition-transform">
-      <Download size={20} />
-      <span>TELECHARGER LE RAPPORT PDF</span>
-    </button>
-  );
+  doc.save(`Expertise_Risque_${date.replace(/\//g, '-')}.pdf`);
 };
-
-export default ExportPDF;
