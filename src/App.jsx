@@ -1,43 +1,57 @@
-import React, { useEffect, useState } from 'react';import { useInspectionStore } from './hooks/useInspectionStore';import InspectionForm from './components/InspectionForm';import Dashboard from './components/Dashboard';import GarantieSelector from './components/GarantieSelector';import { ClipboardList, LayoutDashboard, Settings } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useInspectionStore } from './hooks/useInspectionStore';
+import InspectionForm from './components/InspectionForm';
+import Dashboard from './components/Dashboard';
+import GarantieSelector from './components/GarantieSelector';
+import AIAnalysis from './components/AIAnalysis';
+import { ClipboardList, LayoutDashboard, BrainCircuit, Shield } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('inspect');
-  const [showGaranties, setShowGaranties] = useState(true);
-  const { loadFromLocalStorage } = useInspectionStore();
+  const [isStarted, setIsStarted] = useState(false);
+  const { loadFromLocalStorage, selectedGaranties } = useInspectionStore();
 
-  useEffect(() => { loadFromLocalStorage(); }, []);
+  // Chargement des données au démarrage
+  useEffect(() => {
+    loadFromLocalStorage();
+  }, []);
+
+  // Fonction pour gérer le démarrage de l'audit
+  const startAudit = () => {
+    if (selectedGaranties.length > 0) {
+      setIsStarted(true);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans pb-24">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24">
+      {/* En-tête Fixe (Optionnel) */}
       <div className="max-w-md mx-auto px-6 pt-8">
-        {activeTab === 'inspect' ? (
-          showGaranties ? (
-            <div className="space-y-6">
+        
+        {/* VUE : INSPECTION / AUDIT */}
+        {activeTab === 'inspect' && (
+          !isStarted ? (
+            <div className="space-y-6 animate-in fade-in duration-500">
               <GarantieSelector />
-              <button onClick={() => setShowGaranties(false)} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black shadow-xl active:scale-95 transition-all uppercase tracking-widest">Démarrer l'Audit</button>
+              <button 
+                onClick={startAudit}
+                disabled={selectedGaranties.length === 0}
+                className={`w-full py-5 rounded-2xl font-black shadow-xl transition-all uppercase tracking-widest flex items-center justify-center space-x-2 ${
+                  selectedGaranties.length > 0 
+                  ? 'bg-blue-600 text-white active:scale-95' 
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <Shield size={20} />
+                <span>Démarrer l'Expertise</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
-              <button onClick={() => setShowGaranties(true)} className="text-[10px] font-black text-blue-600 uppercase tracking-tighter mb-2 flex items-center">← Modifier les garanties</button>
-              <InspectionForm />
-            </div>
-          )
-        ) : (
-          <Dashboard />
-        )}
-      </div>
-
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-8 py-4 z-[100]">
-        <div className="max-w-md mx-auto flex justify-between items-center">
-          <button onClick={() => {setActiveTab('inspect'); setShowGaranties(false);}} className={`flex flex-col items-center space-y-1 ${activeTab === 'inspect' ? 'text-blue-600' : 'text-slate-400'}`}>
-            <ClipboardList size={24} /><span className="text-[10px] font-bold uppercase">Audit</span>
-          </button>
-          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center space-y-1 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}>
-            <LayoutDashboard size={24} /><span className="text-[10px] font-bold uppercase">Stats</span>
-          </button>
-        </div>
-      </nav>
-    </div>
-  );
-}
-export default App;
+              <button 
+                onClick={() => setIsStarted(false)} 
+                className="text-[10px] font-black text-blue-600 uppercase mb-2 flex items-center hover:opacity-70 transition-opacity"
+              >
+                <span className="mr-1">←</span> Modifier les garanties du contrat
+              </button>
+              <InspectionForm
