@@ -96,4 +96,21 @@ const InspectionForm = () => {
   );
 };
 
+{/* BOUTON AJOUTER SECTION */}
+<div className="mt-10 p-6 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center gap-4">
+  <p className="text-[10px] font-black uppercase text-slate-400">Besoin d'un point spécifique ?</p>
+  <div className="flex gap-2 w-full">
+    <button 
+      onClick={() => {
+        const title = prompt("Nom de la nouvelle section :");
+        if(title) addSection(title);
+      }}
+      className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
+    >
+      + Ajouter une Section
+    </button>
+  </div>
+</div>
+
+
 export default InspectionForm;
