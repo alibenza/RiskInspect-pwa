@@ -1,71 +1,8 @@
-import React from 'react';
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Radar } from 'react-chartjs-2';
-import { useInspectionStore } from '../hooks/useInspectionStore';
-
+import React from 'react';import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend } from 'chart.js';import { Radar } from 'react-chartjs-2';import { useInspectionStore } from '../hooks/useInspectionStore';
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
-
-const RiskChart = () => {
-  const { questionsConfig, responses } = useInspectionStore();
-
-  // 1. Extraire dynamiquement les noms des sections et calculer leur score moyen
-  const labels = questionsConfig.map(section => section.title.substring(0, 20) + "..."); // On tronque pour la lisibilité
-  
-  const dataValues = questionsConfig.map(section => {
-    const rangeQuestions = section.questions.filter(q => q.type === 'range');
-    
-    if (rangeQuestions.length === 0) return 0;
-
-    let totalPoints = 0;
-    rangeQuestions.forEach(q => {
-      totalPoints += parseFloat(responses[q.id]) || 0;
-    });
-
-    // Moyenne ramenée sur 100 pour le graphique
-    return (totalPoints / (rangeQuestions.length * 5)) * 100;
-  });
-
-  const data = {
-    labels,
-    datasets: [
-      {
-        label: 'Niveau de Conformité %',
-        data: dataValues,
-        backgroundColor: 'rgba(37, 99, 235, 0.2)', // Blue-600 avec transparence
-        borderColor: 'rgba(37, 99, 235, 1)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(37, 99, 235, 1)',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgba(37, 99, 235, 1)',
-      },
-    ],
-  };
-
-  const options = {
-    scales: {
-      r: {
-        angleLines: { display: true },
-        suggestedMin: 0,
-        suggestedMax: 100,
-        ticks: { stepSize: 20, display: false }
-      },
-    },
-    plugins: {
-      legend: { display: false }
-    },
-    maintainAspectRatio: false
-  };
-
-  return <Radar data={data} options={options} />;
-};
-
+const RiskChart = () => {const { questionsConfig, responses } = useInspectionStore();const scoringSections = questionsConfig.filter(section => section.questions.some(q => responses[q.id]?.isScored));
+if (scoringSections.length === 0) return <div className="flex h-full items-center justify-center text-slate-400 text-sm">Aucun point n'a été noté pour le moment</div>;
+const labels = scoringSections.map(s => s.title.length > 15 ? s.title.substring(0, 15) + "..." : s.title);const dataValues = scoringSections.map(section => {let possible = 0;let gained = 0;section.questions.forEach(q => {const resp = responses[q.id];if (resp?.isScored) {possible += 5;gained += parseFloat(resp.score) || 0;if (q.id === 'nb_extincteurs') {const surface = parseFloat(responses['superficie_batie']?.value) || 0;const nbReel = parseFloat(responses['nb_extincteurs']?.value) || 0;const nbTheorique = Math.ceil(surface / 150);const scoreExt = nbTheorique > 0 ? Math.min(5, (nbReel / nbTheorique) * 5) : 0;possible += 5;gained += scoreExt;}}});return possible > 0 ? (gained / possible) * 100 : 0;});
+const data = { labels, datasets: [{ label: 'Conformité %', data: dataValues, backgroundColor: 'rgba(37, 99, 235, 0.2)', borderColor: '#2563eb', borderWidth: 2, pointBackgroundColor: '#2563eb' }] };
+return <Radar data={data} options={{ scales: { r: { suggestedMin: 0, suggestedMax: 100, ticks: { display: false } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false }} />;};
 export default RiskChart;
