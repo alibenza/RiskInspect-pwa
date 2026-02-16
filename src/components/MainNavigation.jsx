@@ -1,53 +1,84 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import InspectionForm from './InspectionForm';
-import Dashboard from './Dashboard';
-import GarantieSelector from './GarantieSelector';
-import AIAnalysis from './AIAnalysis';
-import { ClipboardList, LayoutDashboard, BrainCircuit, Shield } from 'lucide-react';
+import { exportToPdf } from './ExportPDF'; // Vérifiez bien le nom du fichier (ExportPDF.js)
+import { 
+  LayoutDashboard, 
+  ClipboardCheck, 
+  BrainCircuit, 
+  FileDown, 
+  RotateCcw 
+} from 'lucide-react';
 
-const MainNavigation = () => {
-  const [activeTab, setActiveTab] = useState('inspect');
-  const [isStarted, setIsStarted] = useState(false);
-  const { loadFromLocalStorage, selectedGaranties } = useInspectionStore();
+const MainNavigation = ({ activeTab, setActiveTab }) => {
+  const { responses, questionsConfig, aiResults, resetAudit } = useInspectionStore();
 
-  useEffect(() => { loadFromLocalStorage(); }, []);
+  const handleDownload = () => {
+    if (Object.keys(responses).length === 0) {
+      alert("L'audit est vide. Veuillez remplir quelques informations avant d'exporter.");
+      return;
+    }
+    // On lance l'export avec les 3 piliers de données
+    exportToPdf(responses, questionsConfig, aiResults);
+  };
+
+  const handleReset = () => {
+    if (confirm("Voulez-vous vraiment réinitialiser tout l'audit ?")) {
+      resetAudit();
+      setActiveTab('audit');
+    }
+  };
 
   return (
-    <div className="pb-24">
-      <div className="max-w-md mx-auto px-6 pt-8">
-        {activeTab === 'inspect' && (!isStarted ? (
-          <div className="space-y-6">
-            <GarantieSelector />
-            <button onClick={() => selectedGaranties.length > 0 && setIsStarted(true)} 
-              className={`w-full py-5 rounded-2xl font-black shadow-xl uppercase flex items-center justify-center space-x-2 ${selectedGaranties.length > 0 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-              <Shield size={20} /><span>Démarrer l'Expertise</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <button onClick={() => setIsStarted(false)} className="text-[10px] font-black text-blue-600 uppercase mb-2">← Garanties</button>
-            <InspectionForm />
-          </div>
-        ))}
-        {activeTab === 'analysis' && <AIAnalysis />}
-        {activeTab === 'dashboard' && <Dashboard />}
-      </div>
+    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl z-50 px-6 py-4">
+      <div className="flex items-center justify-between">
+        
+        {/* Onglet Audit */}
+        <button 
+          onClick={() => setActiveTab('audit')}
+          className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'audit' ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <ClipboardCheck size={20} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Audit</span>
+        </button>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-6 py-4 z-[100]">
-        <div className="max-w-md mx-auto flex justify-between items-center">
-          <button onClick={() => {setActiveTab('inspect'); setIsStarted(false);}} className={`flex flex-col items-center ${activeTab === 'inspect' ? 'text-blue-600' : 'text-slate-300'}`}>
-            <ClipboardList size={22} /><span className="text-[9px] font-black uppercase tracking-tighter">Audit</span>
-          </button>
-          <button onClick={() => setActiveTab('analysis')} className={`flex flex-col items-center ${activeTab === 'analysis' ? 'text-indigo-600' : 'text-slate-300'}`}>
-            <BrainCircuit size={22} /><span className="text-[9px] font-black uppercase tracking-tighter">IA</span>
-          </button>
-          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-300'}`}>
-            <LayoutDashboard size={22} /><span className="text-[9px] font-black uppercase tracking-tighter">Stats</span>
-          </button>
-        </div>
-      </nav>
-    </div>
+        {/* Onglet Dashboard */}
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'dashboard' ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <LayoutDashboard size={20} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Stats</span>
+        </button>
+
+        {/* Bouton IA (Central) */}
+        <button 
+          onClick={() => setActiveTab('ai')}
+          className={`flex flex-col items-center justify-center -translate-y-8 w-14 h-14 rounded-full shadow-lg transition-all ${activeTab === 'ai' ? 'bg-indigo-500 text-white ring-4 ring-indigo-500/20' : 'bg-slate-800 text-slate-400'}`}
+        >
+          <BrainCircuit size={24} />
+        </button>
+
+        {/* Bouton Export PDF */}
+        <button 
+          onClick={handleDownload}
+          className="flex flex-col items-center space-y-1 text-slate-500 hover:text-green-400 transition-colors"
+          title="Exporter le rapport complet"
+        >
+          <FileDown size={20} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">PDF</span>
+        </button>
+
+        {/* Bouton Reset */}
+        <button 
+          onClick={handleReset}
+          className="flex flex-col items-center space-y-1 text-slate-500 hover:text-red-400 transition-colors"
+        >
+          <RotateCcw size={20} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Reset</span>
+        </button>
+
+      </div>
+    </nav>
   );
 };
 
