@@ -1,11 +1,16 @@
 import React from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import { CheckCircle2, Circle, AlertCircle, MessageSquareText } from 'lucide-react';
+import { 
+  MessageSquareText, 
+  AlertCircle, 
+  PlusCircle, 
+  FolderPlus,
+  GripVertical
+} from 'lucide-react';
 
 const InspectionForm = () => {
-  const { questionsConfig, responses, setResponse } = useInspectionStore();
+  const { questionsConfig, responses, setResponse, addSection, addQuestion } = useInspectionStore();
 
-  // Sécurité : Si questionsConfig n'est pas encore chargé
   if (!questionsConfig || questionsConfig.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-slate-400">
@@ -31,8 +36,21 @@ const InspectionForm = () => {
     setResponse(qId, { ...current, comment });
   };
 
+  const addNewQuestion = (sectionIdx) => {
+    const label = prompt("Libellé de la question :");
+    if (label) {
+      const isScored = confirm("Cette question doit-elle comporter une note de 1 à 5 ?\n(Annuler pour une réponse texte libre)");
+      addQuestion(sectionIdx, label, isScored);
+    }
+  };
+
+  const addNewSection = () => {
+    const title = prompt("Nom de la nouvelle section :");
+    if (title) addSection(title);
+  };
+
   return (
-    <div className="space-y-12 pb-32 animate-in fade-in duration-500">
+    <div className="space-y-12 pb-40 animate-in fade-in duration-500">
       {questionsConfig.map((section, sIdx) => (
         <div key={sIdx} className="space-y-6">
           {/* Titre de Section */}
@@ -45,12 +63,11 @@ const InspectionForm = () => {
           </div>
 
           {section.questions.map((q) => (
-            <div key={q.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-4">
+            <div key={q.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-4 relative group">
               <label className="block text-sm font-bold text-slate-800 leading-tight">
                 {q.label}
               </label>
 
-              {/* Options de Score 1 à 5 */}
               {q.isScored ? (
                 <div className="flex justify-between items-center gap-2">
                   {[1, 2, 3, 4, 5].map((num) => (
@@ -59,7 +76,7 @@ const InspectionForm = () => {
                       onClick={() => handleScoreChange(q.id, num, q.label, true)}
                       className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${
                         responses[q.id]?.score === num
-                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105'
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
                           : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
                       }`}
                     >
@@ -68,49 +85,49 @@ const InspectionForm = () => {
                   ))}
                 </div>
               ) : (
-                /* Input Texte pour questions non-notées */
                 <input
                   type="text"
-                  placeholder="Réponse..."
+                  placeholder="Réponse libre..."
                   value={responses[q.id]?.value || ''}
                   onChange={(e) => setResponse(q.id, { value: e.target.value, isScored: false, label: q.label })}
                   className="w-full bg-slate-50 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
                 />
               )}
 
-              {/* Zone de Commentaire / Observation */}
-              <div className="relative group">
-                <MessageSquareText size={14} className="absolute left-4 top-4 text-slate-300 group-focus-within:text-indigo-500" />
+              <div className="relative">
+                <MessageSquareText size={14} className="absolute left-4 top-4 text-slate-300" />
                 <textarea
-                  placeholder="Observations ou recommandations..."
+                  placeholder="Observations techniques..."
                   value={responses[q.id]?.comment || ''}
                   onChange={(e) => handleCommentChange(q.id, e.target.value)}
-                  className="w-full bg-slate-50 border-none rounded-xl p-4 pl-10 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[80px]"
+                  className="w-full bg-slate-50 border-none rounded-xl p-4 pl-10 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[60px]"
                 />
               </div>
             </div>
           ))}
+
+          {/* BOUTON AJOUTER QUESTION DANS CETTE SECTION */}
+          <button 
+            onClick={() => addNewQuestion(sIdx)}
+            className="w-full py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors border-2 border-dashed border-slate-100 rounded-xl"
+          >
+            <PlusCircle size={14} /> Ajouter un point dans cette zone
+          </button>
         </div>
       ))}
+
+      {/* BOUTON AJOUTER SECTION TOUT EN BAS */}
+      <div className="pt-10 border-t border-slate-100">
+        <button 
+          onClick={addNewSection}
+          className="w-full py-8 bg-slate-900 text-white rounded-[2rem] flex flex-col items-center justify-center gap-2 shadow-xl hover:bg-indigo-600 transition-all"
+        >
+          <FolderPlus size={24} />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Créer une nouvelle section d'audit</span>
+        </button>
+      </div>
     </div>
   );
 };
-
-{/* BOUTON AJOUTER SECTION */}
-<div className="mt-10 p-6 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center gap-4">
-  <p className="text-[10px] font-black uppercase text-slate-400">Besoin d'un point spécifique ?</p>
-  <div className="flex gap-2 w-full">
-    <button 
-      onClick={() => {
-        const title = prompt("Nom de la nouvelle section :");
-        if(title) addSection(title);
-      }}
-      className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
-    >
-      + Ajouter une Section
-    </button>
-  </div>
-</div>
-
 
 export default InspectionForm;
