@@ -10,10 +10,10 @@ export const useInspectionStore = create((set, get) => ({
     const newGaranties = state.selectedGaranties.includes(id) ? state.selectedGaranties.filter(g => g !== id) : [...state.selectedGaranties, id];
     localStorage.setItem('risk-inspect-garanties', JSON.stringify(newGaranties)); return { selectedGaranties: newGaranties };
   }),
-  resetInspection: () => { localStorage.removeItem('risk-inspect-data'); localStorage.removeItem('risk-inspect-garanties'); set({ responses: {}, selectedGaranties: [] }); },
+  resetInspection: () => { localStorage.clear(); set({ responses: {}, selectedGaranties: [] }); },
   loadFromLocalStorage: () => {
-    const savedData = localStorage.getItem('risk-inspect-data'); const savedConfig = localStorage.getItem('risk-inspect-config'); const savedGaranties = localStorage.getItem('risk-inspect-garanties');
-    set({ responses: savedData ? JSON.parse(savedData) : {}, questionsConfig: savedConfig ? JSON.parse(savedConfig) : RISK_QUESTIONS, selectedGaranties: savedGaranties ? JSON.parse(savedGaranties) : [] });
+    const data = localStorage.getItem('risk-inspect-data'); const config = localStorage.getItem('risk-inspect-config'); const gars = localStorage.getItem('risk-inspect-garanties');
+    set({ responses: data ? JSON.parse(data) : {}, questionsConfig: config ? JSON.parse(config) : RISK_QUESTIONS, selectedGaranties: gars ? JSON.parse(gars) : [] });
   },
   calculateScore: () => {
     const { responses, questionsConfig } = get(); let possible = 0, gained = 0;
