@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export const useInspectionStore = create((set) => ({
-  // CONFIGURATION INITIALE (Basée sur votre document Word)
+  // CONFIGURATION INITIALE
   questionsConfig: [
     {
       title: "Informations Générales",
@@ -65,6 +65,18 @@ export const useInspectionStore = create((set) => ({
   responses: {},
   aiResults: null,
 
+  // --- NOUVEL ÉTAT : INFOS AUDITEUR ---
+  auditorInfo: {
+    name: '',
+    company: '',
+    logo: null // Contiendra le base64 du logo
+  },
+
+  // ACTIONS POUR L'AUDITEUR
+  setAuditorInfo: (info) => set((state) => ({
+    auditorInfo: { ...state.auditorInfo, ...info }
+  })),
+
   // ACTIONS POUR MODIFIER LES RÉPONSES
   setResponse: (id, data) => set((state) => ({
     responses: { 
@@ -73,7 +85,7 @@ export const useInspectionStore = create((set) => ({
     }
   })),
 
-  // --- NOUVELLES ACTIONS POUR LES PHOTOS ---
+  // ACTIONS POUR LES PHOTOS
   addPhoto: (qId, photoData) => set((state) => ({
     responses: {
       ...state.responses,
@@ -93,9 +105,8 @@ export const useInspectionStore = create((set) => ({
       }
     }
   })),
-  // ------------------------------------------
 
-  // ACTIONS POUR AJOUTER DYNAMIQUEMENT DES QUESTIONS/SECTIONS
+  // ACTIONS DYNAMIQUES
   addSection: (title) => set((state) => ({
     questionsConfig: [...state.questionsConfig, { title: title, questions: [] }]
   })),
