@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import PhotoCapture from './PhotoCapture'; // Assurez-vous que le fichier PhotoCapture.jsx est créé
+import PhotoCapture from './PhotoCapture';
 import { 
   MessageSquareText, 
   AlertCircle, 
   PlusCircle, 
   FolderPlus,
-  X 
+  X,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2
 } from 'lucide-react';
 
 const InspectionForm = () => {
@@ -16,9 +19,12 @@ const InspectionForm = () => {
     setResponse, 
     addSection, 
     addQuestion,
-    addPhoto,    // Nouvelle action
-    removePhoto  // Nouvelle action
+    addPhoto, 
+    removePhoto 
   } = useInspectionStore();
+
+  // État pour gérer quelles sections sont ouvertes
+  const [openSections, setOpenSections] = useState({});
 
   if (!questionsConfig || questionsConfig.length === 0) {
     return (
@@ -28,6 +34,13 @@ const InspectionForm = () => {
       </div>
     );
   }
+
+  const toggleSection = (idx) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
+  };
 
   const handleScoreChange = (qId, score, label, isScored) => {
     const current = responses[qId] || {};
@@ -45,124 +58,141 @@ const InspectionForm = () => {
     setResponse(qId, { ...current, comment });
   };
 
-  const addNewQuestion = (sectionIdx) => {
-    const label = prompt("Libellé de la question :");
-    if (label) {
-      const isScored = confirm("Cette question doit-elle comporter une note de 1 à 5 ?\n(Annuler pour une réponse texte libre)");
-      addQuestion(sectionIdx, label, isScored);
-    }
-  };
-
-  const addNewSection = () => {
-    const title = prompt("Nom de la nouvelle section :");
-    if (title) addSection(title);
+  // Calculer si une section est "complétée" (toutes les questions notées ont une réponse)
+  const isSectionComplete = (questions) => {
+    const scoredQuestions = questions.filter(q => q.isScored);
+    if (scoredQuestions.length === 0) return false;
+    return scoredQuestions.every(q => responses[q.id]?.score);
   };
 
   return (
-    <div className="space-y-12 pb-40 animate-in fade-in duration-500">
-      {questionsConfig.map((section, sIdx) => (
-        <div key={sIdx} className="space-y-6">
-          {/* Titre de Section */}
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200"></div>
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 whitespace-nowrap">
-              {section.title}
-            </h2>
-            <div className="h-px flex-1 bg-slate-200"></div>
-          </div>
+    <div className="space-y-4 pb-40 animate-in fade-in duration-500">
+      {questionsConfig.map((section, sIdx) => {
+        const isOpen = openSections[sIdx];
+        const complete = isSectionComplete(section.questions);
 
-          {section.questions.map((q) => (
-            <div key={q.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-4 relative group">
-              <label className="block text-sm font-bold text-slate-800 leading-tight">
-                {q.label}
-              </label>
-
-              {q.isScored ? (
-                <div className="flex justify-between items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => handleScoreChange(q.id, num, q.label, true)}
-                      className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${
-                        responses[q.id]?.score === num
-                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  ))}
+        return (
+          <div key={sIdx} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            {/* EN-TÊTE DE SECTION (ACCORDÉON) */}
+            <button 
+              onClick={() => toggleSection(sIdx)}
+              className={`w-full flex items-center justify-between p-6 transition-all ${isOpen ? 'bg-slate-50' : 'bg-white'}`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`p-2 rounded-xl ${complete ? 'bg-green-100 text-green-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                  {complete ? <CheckCircle2 size={18} /> : <span className="text-[10px] font-black">{sIdx + 1}</span>}
                 </div>
-              ) : (
-                <input
-                  type="text"
-                  placeholder="Réponse libre..."
-                  value={responses[q.id]?.value || ''}
-                  onChange={(e) => setResponse(q.id, { value: e.target.value, isScored: false, label: q.label })}
-                  className="w-full bg-slate-50 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-                />
-              )}
-
-              <div className="relative">
-                <MessageSquareText size={14} className="absolute left-4 top-4 text-slate-300" />
-                <textarea
-                  placeholder="Observations techniques..."
-                  value={responses[q.id]?.comment || ''}
-                  onChange={(e) => handleCommentChange(q.id, e.target.value)}
-                  className="w-full bg-slate-50 border-none rounded-xl p-4 pl-10 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[60px]"
-                />
+                <h2 className={`text-xs font-black uppercase tracking-widest ${isOpen ? 'text-indigo-600' : 'text-slate-600'}`}>
+                  {section.title}
+                </h2>
               </div>
+              {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+            </button>
 
-              {/* SECTION PHOTO : Prise de vue et aperçu */}
-              <div className="pt-2 space-y-3">
-                <PhotoCapture 
-                  qId={q.id} 
-                  onCapture={(photoData) => addPhoto(q.id, photoData)} 
-                />
+            {/* CONTENU DE SECTION (SI OUVERT) */}
+            {isOpen && (
+              <div className="p-6 pt-0 space-y-8 animate-in slide-in-from-top-2 duration-300">
+                <div className="h-px bg-slate-100 w-full mb-6" />
+                
+                {section.questions.map((q) => (
+                  <div key={q.id} className="space-y-4 relative group border-b border-slate-50 pb-8 last:border-0">
+                    <label className="block text-sm font-bold text-slate-800 leading-tight">
+                      {q.label}
+                    </label>
 
-                {responses[q.id]?.photos?.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {responses[q.id].photos.map((p, idx) => (
-                      <div key={idx} className="relative flex-shrink-0">
-                        <img 
-                          src={p.url} 
-                          alt="Preuve technique" 
-                          className="w-20 h-20 object-cover rounded-xl border border-slate-100"
-                        />
-                        <button
-                          onClick={() => removePhoto(q.id, idx)}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
-                        >
-                          <X size={10} />
-                        </button>
+                    {q.isScored ? (
+                      <div className="flex justify-between items-center gap-2">
+                        {[1, 2, 3, 4, 5].map((num) => (
+                          <button
+                            key={num}
+                            onClick={() => handleScoreChange(q.id, num, q.label, true)}
+                            className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${
+                              responses[q.id]?.score === num
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="Réponse libre..."
+                        value={responses[q.id]?.value || ''}
+                        onChange={(e) => setResponse(q.id, { value: e.target.value, isScored: false, label: q.label })}
+                        className="w-full bg-slate-50 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                    )}
 
-          {/* BOUTON AJOUTER QUESTION DANS CETTE SECTION */}
-          <button 
-            onClick={() => addNewQuestion(sIdx)}
-            className="w-full py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors border-2 border-dashed border-slate-100 rounded-xl"
-          >
-            <PlusCircle size={14} /> Ajouter un point dans cette zone
-          </button>
-        </div>
-      ))}
+                    <div className="relative">
+                      <MessageSquareText size={14} className="absolute left-4 top-4 text-slate-300" />
+                      <textarea
+                        placeholder="Observations techniques..."
+                        value={responses[q.id]?.comment || ''}
+                        onChange={(e) => handleCommentChange(q.id, e.target.value)}
+                        className="w-full bg-slate-50 border-none rounded-xl p-4 pl-10 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[60px]"
+                      />
+                    </div>
+
+                    {/* SECTION PHOTO */}
+                    <div className="pt-2 space-y-3">
+                      <PhotoCapture 
+                        qId={q.id} 
+                        onCapture={(photoData) => addPhoto(q.id, photoData)} 
+                      />
+
+                      {responses[q.id]?.photos?.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                          {responses[q.id].photos.map((p, idx) => (
+                            <div key={idx} className="relative flex-shrink-0">
+                              <img 
+                                src={p.url} 
+                                alt="Preuve technique" 
+                                className="w-20 h-20 object-cover rounded-xl border border-slate-100 shadow-sm"
+                              />
+                              <button
+                                onClick={() => removePhoto(q.id, idx)}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* BOUTON AJOUTER QUESTION DANS CETTE SECTION */}
+                <button 
+                  onClick={() => {
+                    const label = prompt("Libellé de la question :");
+                    if (label) addQuestion(sIdx, label, confirm("Score de 1 à 5 ?"));
+                  }}
+                  className="w-full py-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors border-2 border-dashed border-slate-100 rounded-2xl"
+                >
+                  <PlusCircle size={14} /> Ajouter un point de contrôle
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* BOUTON AJOUTER SECTION TOUT EN BAS */}
-      <div className="pt-10 border-t border-slate-100">
-        <button 
-          onClick={addNewSection}
-          className="w-full py-8 bg-slate-900 text-white rounded-[2rem] flex flex-col items-center justify-center gap-2 shadow-xl hover:bg-indigo-600 transition-all"
-        >
-          <FolderPlus size={24} />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Créer une nouvelle section d'audit</span>
-        </button>
-      </div>
+      <button 
+        onClick={() => {
+          const title = prompt("Nom de la section :");
+          if (title) addSection(title);
+        }}
+        className="w-full py-6 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center gap-3 shadow-xl hover:bg-indigo-600 transition-all active:scale-95"
+      >
+        <FolderPlus size={20} />
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Nouvelle Section</span>
+      </button>
     </div>
   );
 };
