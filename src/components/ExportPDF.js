@@ -4,180 +4,192 @@ import 'jspdf-autotable';
 export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) => {
   const doc = new jsPDF();
   const date = new Date().toLocaleDateString();
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Calcul score global
+  // Calcul score global terrain
   const scoredQ = Object.values(responses).filter(r => r.isScored);
   const score = scoredQ.length ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) : 0;
 
-  // --- PAGE 1 : RÉSUMÉ DASHBOARD AVEC LOGO ---
+  // --- PAGE 1 : DASHBOARD DE SYNTHÈSE ---
+  // Bandeau Header
   doc.setFillColor(15, 23, 42); // Slate 900
-  doc.rect(0, 0, 210, 60, 'F');
+  doc.rect(0, 0, 210, 65, 'F');
 
-  // Insertion du Logo Auditeur (en haut à droite)
   if (auditorInfo?.logo) {
     try {
-      // On place le logo à x:160, y:10 avec une largeur de 35mm
-      doc.addImage(auditorInfo.logo, 'PNG', 160, 10, 35, 20);
-    } catch (e) {
-      console.error("Erreur lors de l'insertion du logo dans le PDF", e);
-    }
+      doc.addImage(auditorInfo.logo, 'PNG', 165, 12, 30, 15);
+    } catch (e) { console.error(e); }
   }
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
-  doc.text("RAPPORT DE VISITE DE RISQUE", 15, 25);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text("RAPPORT D'EXPERTISE RISQUES", 15, 25);
   
-  // Infos Auditeur dans le bandeau
-  doc.setFontSize(10);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
   doc.setTextColor(200, 200, 200);
-  doc.text(`AUTEUR : ${auditorInfo?.name || 'Non spécifié'}`, 15, 35);
-  doc.text(`ENTREPRISE : ${auditorInfo?.company || 'Non spécifié'}`, 15, 41);
-  
-  doc.setFontSize(12);
+  doc.text(`AUDITEUR : ${auditorInfo?.name || 'Non spécifié'}`, 15, 35);
+  doc.text(`CABINET : ${auditorInfo?.company || 'Non spécifié'}`, 15, 40);
+  doc.text(`NATURE D'ACTIVITÉ : ${responses['activite_nature']?.value || 'Non spécifiée'}`, 15, 45);
+  doc.text(`DATE DU RAPPORT : ${date}`, 15, 50);
+
+  // Score Global sous forme de badge
+  doc.setFillColor(79, 70, 229); // Indigo 600
+  doc.roundedRect(15, 75, 180, 25, 3, 3, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.text(`SCORE DE CONFORMITÉ : ${score}% | Date : ${date}`, 15, 52);
+  doc.setFontSize(10);
+  doc.text("SCORE D'ASSURABILITÉ GLOBAL (TERRAIN)", 25, 85);
+  doc.setFontSize(16);
+  doc.text(`${score}%`, 25, 92);
 
-  let y = 75;
-  if (aiResults) {
-    // Points Forts
-    doc.setTextColor(34, 197, 94);
+  // Tableau d'exposition IA (Remplace les graphiques)
+  let yPos = 115;
+  if (aiResults?.analyses) {
+    doc.setTextColor(15, 23, 42);
     doc.setFontSize(12);
-    doc.text("POINTS FORTS TECHNIQUES", 15, y);
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    aiResults.pointsForts.forEach(p => {
-      const splitP = doc.splitTextToSize(`• ${p}`, 180);
-      doc.text(splitP, 20, y += 7);
-      y += (splitP.length - 1) * 4;
-    });
+    doc.setFont(undefined, 'bold');
+    doc.text("MATRICE D'EXPOSITION PAR GARANTIE", 15, 110);
 
-    // Points Faibles
-    y += 12;
-    doc.setFontSize(12);
-    doc.setTextColor(239, 68, 68);
-    doc.text("VULNÉRABILITÉS CRITIQUES", 15, y);
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    aiResults.pointsFaibles.forEach(p => {
-      const splitP = doc.splitTextToSize(`• ${p}`, 180);
-      doc.text(splitP, 20, y += 7);
-      y += (splitP.length - 1) * 4;
-    });
+    const exposureRows = aiResults.analyses.map(an => [
+      an.garantie, 
+      `${an.exposition}/10`, 
+      `${an.confidence}%`,
+      an.exposition > 6 ? "CRITIQUE" : "MAITRISÉ"
+    ]);
 
-    // Recommandations
-    y += 12;
-    doc.setFontSize(12);
-    doc.setTextColor(79, 70, 229);
-    doc.text("ACTIONS DE PRÉVENTION PRIORITAIRES", 15, y);
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    aiResults.recommandations.forEach(p => {
-      const splitP = doc.splitTextToSize(`* ${p}`, 180);
-      doc.text(splitP, 20, y += 7);
-      y += (splitP.length - 1) * 4;
+    doc.autoTable({
+      startY: 115,
+      head: [['Garantie', 'Exposition', 'Fiabilité IA', 'Statut']],
+      body: exposureRows,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+      styles: { fontSize: 8 },
+      didParseCell: function(data) {
+        if (data.column.index === 3 && data.cell.text[0] === 'CRITIQUE') {
+          data.cell.styles.textColor = [239, 68, 68];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
     });
+    yPos = doc.lastAutoTable.finalY + 15;
   }
 
-  // --- PAGE 2 : SYNTHÈSE IA DÉTAILLÉE ---
+  // Top Recommandation sur page 1
+  if (aiResults?.recommandation_maitresse) {
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(15, yPos, 180, 20, 2, 2, 'F');
+    doc.setTextColor(79, 70, 229);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.text("PRIORITÉ N°1 :", 20, yPos + 8);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9);
+    const splitRec = doc.splitTextToSize(aiResults.recommandation_maitresse, 165);
+    doc.text(splitRec, 20, yPos + 14);
+  }
+
+  // --- PAGE 2 : ANALYSE DÉTAILLÉE IA ---
   doc.addPage();
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(16);
   doc.text("SYNTHÈSE DE L'INGÉNIEUR CONSEIL", 15, 20);
   doc.setDrawColor(79, 70, 229);
-  doc.line(15, 22, 100, 22);
-  
-  doc.setFontSize(10);
-  doc.setTextColor(40, 40, 40);
-  const synth = doc.splitTextToSize(aiResults?.synthese || "Analyse non générée.", 180);
-  doc.text(synth, 15, 35, { lineHeightFactor: 1.5 });
+  doc.line(15, 23, 80, 23);
 
-  // --- PAGE 3 : TABLEAU COMPLET DES RÉPONSES ---
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.text("RELEVÉS DÉTAILLÉS DU SITE", 15, 20);
+  // Paragraphe d'introduction
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'italic');
+  const intro = doc.splitTextToSize(aiResults?.introduction || aiResults?.synthese || "", 180);
+  doc.text(intro, 15, 35, { lineHeightFactor: 1.4 });
   
-  const rows = [];
+  let currentY = 35 + (intro.length * 6) + 10;
+
+  // Analyse par paragraphe pour chaque garantie
+  aiResults?.analyses?.forEach(an => {
+    if (currentY > 260) { doc.addPage(); currentY = 20; }
+    
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(79, 70, 229);
+    doc.text(`Analyse Focus : ${an.garantie}`, 15, currentY);
+    
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(40, 40, 40);
+    const avis = doc.splitTextToSize(an.avis, 175);
+    doc.text(avis, 15, currentY + 6, { lineHeightFactor: 1.3 });
+    
+    currentY += (avis.length * 6) + 12;
+  });
+
+  // --- PAGE 3 : RECUEIL TECHNIQUE ---
+  doc.addPage();
+  doc.setFontSize(14);
+  doc.setTextColor(15, 23, 42);
+  doc.text("RELEVÉS DÉTAILLÉS DE L'INSPECTION", 15, 20);
+  
+  const tableRows = [];
   questionsConfig.forEach(s => {
-    rows.push([{ content: s.title.toUpperCase(), colSpan: 3, styles: { fillColor: [241, 245, 249], fontStyle: 'bold', textColor: [79, 70, 229] } }]);
+    tableRows.push([{ content: s.title.toUpperCase(), colSpan: 3, styles: { fillColor: [248, 250, 252], fontStyle: 'bold' } }]);
     s.questions.forEach(q => {
       const r = responses[q.id];
       if (r) {
-        const photoCount = r.photos?.length || 0;
-        const val = r.value || '-';
-        const obs = r.comment ? `\nNote: ${r.comment}` : '';
-        const photoLabel = photoCount > 0 ? `\n[${photoCount} photo(s) en annexe]` : '';
-        
-        rows.push([
-          q.label, 
-          r.score || 'N/A', 
-          { content: val + obs + photoLabel }
-        ]);
+        tableRows.push([q.label, r.value || r.score + '/5', r.comment || '-']);
       }
     });
   });
 
   doc.autoTable({
     startY: 30,
-    head: [['Point de contrôle', 'Note/5', 'Observations']],
-    body: rows,
+    head: [['Point de contrôle', 'Réponse', 'Commentaires']],
+    body: tableRows,
     theme: 'grid',
-    headStyles: { fillColor: [15, 23, 42], fontSize: 10 },
-    styles: { fontSize: 8, cellPadding: 4 },
-    columnStyles: { 1: { halign: 'center', cellWidth: 20 } }
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [15, 23, 42] }
   });
 
-  // --- PAGES SUIVANTES : ANNEXE PHOTOGRAPHIQUE ---
-  let hasPhotos = false;
-  questionsConfig.forEach(s => {
-    s.questions.forEach(q => {
-      if (responses[q.id]?.photos?.length > 0) hasPhotos = true;
-    });
+  // --- PAGE 4+ : GALERIE PHOTOS (2 colonnes x 3 lignes = 6 par page) ---
+  const allPhotos = [];
+  Object.keys(responses).forEach(id => {
+    const q = questionsConfig.flatMap(s => s.questions).find(qu => qu.id === id);
+    if (responses[id]?.photos) {
+      responses[id].photos.forEach(p => allPhotos.push({ ...p, label: q?.label || "Image" }));
+    }
   });
 
-  if (hasPhotos) {
+  if (allPhotos.length > 0) {
     doc.addPage();
-    doc.setFontSize(16);
-    doc.setTextColor(15, 23, 42);
-    doc.text("ANNEXE : PREUVES PHOTOGRAPHIQUES", 15, 20);
-    doc.setFontSize(8);
-    doc.text(`Expert : ${auditorInfo?.name || 'Expert IARD'} | Horodatage GPS certifié`, 15, 26);
+    doc.setFontSize(14);
+    doc.text("ANNEXES PHOTOGRAPHIQUES", 15, 20);
 
-    let photoY = 35;
-    questionsConfig.forEach(section => {
-      section.questions.forEach(q => {
-        const r = responses[q.id];
-        if (r?.photos && r.photos.length > 0) {
-          if (photoY > 230) { doc.addPage(); photoY = 25; }
+    let pX = 15;
+    let pY = 30;
+    const imgW = 85;
+    const imgH = 60;
 
-          doc.setFontSize(9);
-          doc.setTextColor(79, 70, 229);
-          doc.setFont(undefined, 'bold');
-          doc.text(`Réf : ${q.label}`, 15, photoY);
-          doc.setFont(undefined, 'normal');
-          doc.setTextColor(100, 100, 100);
+    allPhotos.forEach((photo, index) => {
+      // Si on dépasse 6 photos, nouvelle page
+      if (index > 0 && index % 6 === 0) {
+        doc.addPage();
+        pY = 20;
+      }
 
-          r.photos.forEach((p, idx) => {
-            const xPos = 15 + (idx % 3) * 62;
-            const yPos = photoY + 5;
-            const finalYPos = yPos + (Math.floor(idx / 3) * 55);
-            if (finalYPos > 240) { doc.addPage(); photoY = 20; }
+      try {
+        doc.addImage(photo.url, 'JPEG', pX, pY, imgW, imgH);
+        doc.setFontSize(7);
+        doc.setTextColor(100);
+        doc.text(doc.splitTextToSize(photo.label, imgW), pX, pY + imgH + 4);
+        doc.text(`GPS: ${photo.coords.lat.toFixed(4)}, ${photo.coords.lng.toFixed(4)}`, pX, pY + imgH + 8);
+      } catch (e) { console.error(e); }
 
-            try {
-              doc.addImage(p.url, 'JPEG', xPos, finalYPos, 58, 42);
-              doc.setFontSize(6);
-              doc.text(`Prise le : ${new Date(p.timestamp).toLocaleString()}`, xPos, finalYPos + 45);
-              doc.text(`GPS: ${p.coords.lat.toFixed(5)}, ${p.coords.lng.toFixed(5)}`, xPos, finalYPos + 48);
-            } catch (e) {
-              console.error("Erreur image", e);
-            }
-          });
-          
-          const rowCount = Math.ceil(r.photos.length / 3);
-          photoY += (rowCount * 55) + 15;
-        }
-      });
+      // Logique de grille 2x3
+      if ((index + 1) % 2 === 0) {
+        pX = 15;
+        pY += imgH + 25; // Espace pour l'image + texte + marge
+      } else {
+        pX = 110;
+      }
     });
   }
 
-  doc.save(`Expertise_${auditorInfo?.company || 'Risk'}_${date.replace(/\//g, '-')}.pdf`);
+  doc.save(`Expertise_Risque_${auditorInfo?.company || 'Risk'}_${date.replace(/\//g, '-')}.pdf`);
 };
