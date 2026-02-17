@@ -5,76 +5,163 @@ export const exportToPdf = (responses, questionsConfig, aiResults) => {
   const doc = new jsPDF();
   const date = new Date().toLocaleDateString();
 
-  // Calcul score
+  // Calcul score global
   const scoredQ = Object.values(responses).filter(r => r.isScored);
   const score = scoredQ.length ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) : 0;
 
   // --- PAGE 1 : RÉSUMÉ DASHBOARD ---
-  doc.setFillColor(30, 41, 59);
+  doc.setFillColor(15, 23, 42); // Slate 900
   doc.rect(0, 0, 210, 60, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
   doc.text("RAPPORT D'EXPERTISE RISQUE", 15, 30);
   doc.setFontSize(12);
-  doc.text(`SCORE GLOBAL : ${score}%`, 15, 45);
+  doc.text(`SCORE DE CONFORMITÉ : ${score}% | Date : ${date}`, 15, 45);
 
   let y = 75;
   if (aiResults) {
     // Points Forts
     doc.setTextColor(34, 197, 94);
-    doc.text("POINTS FORTS", 15, y);
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    aiResults.pointsForts.forEach(p => doc.text(`- ${p}`, 20, y += 7));
+    doc.setFontSize(12);
+    doc.text("POINTS FORTS TECHNIQUES", 15, y);
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    aiResults.pointsForts.forEach(p => {
+      const splitP = doc.splitTextToSize(`• ${p}`, 180);
+      doc.text(splitP, 20, y += 7);
+      y += (splitP.length - 1) * 4;
+    });
 
     // Points Faibles
-    y += 15;
+    y += 12;
     doc.setFontSize(12);
     doc.setTextColor(239, 68, 68);
-    doc.text("POINTS FAIBLES", 15, y);
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    aiResults.pointsFaibles.forEach(p => doc.text(`- ${p}`, 20, y += 7));
+    doc.text("VULNÉRABILITÉS CRITIQUES", 15, y);
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    aiResults.pointsFaibles.forEach(p => {
+      const splitP = doc.splitTextToSize(`• ${p}`, 180);
+      doc.text(splitP, 20, y += 7);
+      y += (splitP.length - 1) * 4;
+    });
 
-    // Recs
-    y += 15;
+    // Recommandations
+    y += 12;
     doc.setFontSize(12);
     doc.setTextColor(79, 70, 229);
-    doc.text("RECOMMANDATIONS PRIORITAIRES", 15, y);
+    doc.text("ACTIONS DE PRÉVENTION PRIORITAIRES", 15, y);
     doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-    aiResults.recommandations.forEach(p => doc.text(`* ${p}`, 20, y += 7));
+    doc.setTextColor(60, 60, 60);
+    aiResults.recommandations.forEach(p => {
+      const splitP = doc.splitTextToSize(`* ${p}`, 180);
+      doc.text(splitP, 20, y += 7);
+      y += (splitP.length - 1) * 4;
+    });
   }
 
-  // --- PAGE 2 : ANALYSE IA COMPLÈTE ---
+  // --- PAGE 2 : SYNTHÈSE IA DÉTAILLÉE ---
   doc.addPage();
-  doc.setTextColor(30, 41, 59);
+  doc.setTextColor(15, 23, 42);
   doc.setFontSize(16);
-  doc.text("SYNTHÈSE DE L'EXPERT IA", 15, 20);
+  doc.text("SYNTHÈSE DE L'INGÉNIEUR CONSEIL", 15, 20);
+  doc.setDrawColor(79, 70, 229);
+  doc.line(15, 22, 100, 22);
+  
   doc.setFontSize(10);
-  const synth = doc.splitTextToSize(aiResults?.synthese || "N/A", 180);
-  doc.text(synth, 15, 30);
+  doc.setTextColor(40, 40, 40);
+  const synth = doc.splitTextToSize(aiResults?.synthese || "Analyse non générée.", 180);
+  doc.text(synth, 15, 35, { lineHeightFactor: 1.5 });
 
-  // --- PAGE 3 : DÉTAILS AUDIT ---
+  // --- PAGE 3 : TABLEAU COMPLET DES RÉPONSES ---
   doc.addPage();
   doc.setFontSize(16);
-  doc.text("DÉTAILS DES RÉPONSES", 15, 20);
+  doc.text("RELEVÉS DÉTAILLÉS DU SITE", 15, 20);
+  
   const rows = [];
   questionsConfig.forEach(s => {
-    rows.push([{ content: s.title, colSpan: 3, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }]);
+    rows.push([{ content: s.title.toUpperCase(), colSpan: 3, styles: { fillColor: [241, 245, 249], fontStyle: 'bold', textColor: [79, 70, 229] } }]);
     s.questions.forEach(q => {
       const r = responses[q.id];
-      if (r) rows.push([q.label, r.score || '-', r.value + (r.comment ? ` (${r.comment})` : '')]);
+      if (r) {
+        const photoCount = r.photos?.length || 0;
+        const val = r.value || '-';
+        const obs = r.comment ? `\nNote: ${r.comment}` : '';
+        const photoLabel = photoCount > 0 ? `\n[${photoCount} photo(s) en annexe]` : '';
+        
+        rows.push([
+          q.label, 
+          r.score || 'N/A', 
+          { content: val + obs + photoLabel }
+        ]);
+      }
     });
   });
 
   doc.autoTable({
     startY: 30,
-    head: [['Question', 'Note', 'Réponse']],
+    head: [['Point de contrôle', 'Note/5', 'Observations']],
     body: rows,
     theme: 'grid',
-    headStyles: { fillColor: [79, 70, 229] }
+    headStyles: { fillColor: [15, 23, 42], fontSize: 10 },
+    styles: { fontSize: 8, cellPadding: 4 },
+    columnStyles: { 1: { halign: 'center', cellWidth: 20 } }
   });
 
-  doc.save(`Expertise_Complete_${date}.pdf`);
+  // --- PAGES SUIVANTES : ANNEXE PHOTOGRAPHIQUE ---
+  let hasPhotos = false;
+  questionsConfig.forEach(s => {
+    s.questions.forEach(q => {
+      if (responses[q.id]?.photos?.length > 0) hasPhotos = true;
+    });
+  });
+
+  if (hasPhotos) {
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.setTextColor(15, 23, 42);
+    doc.text("ANNEXE : PREUVES PHOTOGRAPHIQUES", 15, 20);
+    doc.setFontSize(8);
+    doc.text("Photos horodatées avec coordonnées GPS certifiées au moment de l'audit.", 15, 26);
+
+    let photoY = 35;
+    questionsConfig.forEach(section => {
+      section.questions.forEach(q => {
+        const r = responses[q.id];
+        if (r?.photos && r.photos.length > 0) {
+          // Vérifier espace restant sur la page
+          if (photoY > 230) { doc.addPage(); photoY = 25; }
+
+          doc.setFontSize(9);
+          doc.setTextColor(79, 70, 229);
+          doc.setFont(undefined, 'bold');
+          doc.text(`Réf : ${q.label}`, 15, photoY);
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(100, 100, 100);
+
+          r.photos.forEach((p, idx) => {
+            const xPos = 15 + (idx % 3) * 62;
+            const yPos = photoY + 5;
+            
+            // Si 4ème photo, on passe à la ligne
+            const finalYPos = yPos + (Math.floor(idx / 3) * 55);
+            if (finalYPos > 240) { doc.addPage(); photoY = 20; }
+
+            try {
+              doc.addImage(p.url, 'JPEG', xPos, finalYPos, 58, 42);
+              doc.setFontSize(6);
+              doc.text(`Prise le : ${new Date(p.timestamp).toLocaleString()}`, xPos, finalYPos + 45);
+              doc.text(`Lat: ${p.coords.lat.toFixed(5)} / Lon: ${p.coords.lng.toFixed(5)}`, xPos, finalYPos + 48);
+            } catch (e) {
+              console.error("Erreur insertion image PDF", e);
+            }
+          });
+          
+          const rowCount = Math.ceil(r.photos.length / 3);
+          photoY += (rowCount * 55) + 15;
+        }
+      });
+    });
+  }
+
+  doc.save(`Rapport_Expertise_${date.replace(/\//g, '-')}.pdf`);
 };
