@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-export const exportToPdf = (responses, questionsConfig, aiResults) => {
+export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) => {
   const doc = new jsPDF();
   const date = new Date().toLocaleDateString();
 
@@ -9,14 +9,33 @@ export const exportToPdf = (responses, questionsConfig, aiResults) => {
   const scoredQ = Object.values(responses).filter(r => r.isScored);
   const score = scoredQ.length ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) : 0;
 
-  // --- PAGE 1 : RÉSUMÉ DASHBOARD ---
+  // --- PAGE 1 : RÉSUMÉ DASHBOARD AVEC LOGO ---
   doc.setFillColor(15, 23, 42); // Slate 900
   doc.rect(0, 0, 210, 60, 'F');
+
+  // Insertion du Logo Auditeur (en haut à droite)
+  if (auditorInfo?.logo) {
+    try {
+      // On place le logo à x:160, y:10 avec une largeur de 35mm
+      doc.addImage(auditorInfo.logo, 'PNG', 160, 10, 35, 20);
+    } catch (e) {
+      console.error("Erreur lors de l'insertion du logo dans le PDF", e);
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
-  doc.text("RAPPORT D'EXPERTISE RISQUE", 15, 30);
+  doc.text("RAPPORT D'EXPERTISE RISQUE", 15, 25);
+  
+  // Infos Auditeur dans le bandeau
+  doc.setFontSize(10);
+  doc.setTextColor(200, 200, 200);
+  doc.text(`AUDITEUR : ${auditorInfo?.name || 'Non spécifié'}`, 15, 35);
+  doc.text(`CABINET : ${auditorInfo?.company || 'Non spécifié'}`, 15, 41);
+  
   doc.setFontSize(12);
-  doc.text(`SCORE DE CONFORMITÉ : ${score}% | Date : ${date}`, 15, 45);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`SCORE DE CONFORMITÉ : ${score}% | Date : ${date}`, 15, 52);
 
   let y = 75;
   if (aiResults) {
@@ -121,14 +140,13 @@ export const exportToPdf = (responses, questionsConfig, aiResults) => {
     doc.setTextColor(15, 23, 42);
     doc.text("ANNEXE : PREUVES PHOTOGRAPHIQUES", 15, 20);
     doc.setFontSize(8);
-    doc.text("Photos horodatées avec coordonnées GPS certifiées au moment de l'audit.", 15, 26);
+    doc.text(`Expert : ${auditorInfo?.name || 'Expert IARD'} | Horodatage GPS certifié`, 15, 26);
 
     let photoY = 35;
     questionsConfig.forEach(section => {
       section.questions.forEach(q => {
         const r = responses[q.id];
         if (r?.photos && r.photos.length > 0) {
-          // Vérifier espace restant sur la page
           if (photoY > 230) { doc.addPage(); photoY = 25; }
 
           doc.setFontSize(9);
@@ -141,8 +159,6 @@ export const exportToPdf = (responses, questionsConfig, aiResults) => {
           r.photos.forEach((p, idx) => {
             const xPos = 15 + (idx % 3) * 62;
             const yPos = photoY + 5;
-            
-            // Si 4ème photo, on passe à la ligne
             const finalYPos = yPos + (Math.floor(idx / 3) * 55);
             if (finalYPos > 240) { doc.addPage(); photoY = 20; }
 
@@ -150,9 +166,9 @@ export const exportToPdf = (responses, questionsConfig, aiResults) => {
               doc.addImage(p.url, 'JPEG', xPos, finalYPos, 58, 42);
               doc.setFontSize(6);
               doc.text(`Prise le : ${new Date(p.timestamp).toLocaleString()}`, xPos, finalYPos + 45);
-              doc.text(`Lat: ${p.coords.lat.toFixed(5)} / Lon: ${p.coords.lng.toFixed(5)}`, xPos, finalYPos + 48);
+              doc.text(`GPS: ${p.coords.lat.toFixed(5)}, ${p.coords.lng.toFixed(5)}`, xPos, finalYPos + 48);
             } catch (e) {
-              console.error("Erreur insertion image PDF", e);
+              console.error("Erreur image", e);
             }
           });
           
@@ -163,5 +179,5 @@ export const exportToPdf = (responses, questionsConfig, aiResults) => {
     });
   }
 
-  doc.save(`Rapport_Expertise_${date.replace(/\//g, '-')}.pdf`);
+  doc.save(`Expertise_${auditorInfo?.company || 'Risk'}_${date.replace(/\//g, '-')}.pdf`);
 };
