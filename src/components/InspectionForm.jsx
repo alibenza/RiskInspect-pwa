@@ -1,15 +1,24 @@
 import React from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
+import PhotoCapture from './PhotoCapture'; // Assurez-vous que le fichier PhotoCapture.jsx est créé
 import { 
   MessageSquareText, 
   AlertCircle, 
   PlusCircle, 
   FolderPlus,
-  GripVertical
+  X 
 } from 'lucide-react';
 
 const InspectionForm = () => {
-  const { questionsConfig, responses, setResponse, addSection, addQuestion } = useInspectionStore();
+  const { 
+    questionsConfig, 
+    responses, 
+    setResponse, 
+    addSection, 
+    addQuestion,
+    addPhoto,    // Nouvelle action
+    removePhoto  // Nouvelle action
+  } = useInspectionStore();
 
   if (!questionsConfig || questionsConfig.length === 0) {
     return (
@@ -102,6 +111,34 @@ const InspectionForm = () => {
                   onChange={(e) => handleCommentChange(q.id, e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-xl p-4 pl-10 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[60px]"
                 />
+              </div>
+
+              {/* SECTION PHOTO : Prise de vue et aperçu */}
+              <div className="pt-2 space-y-3">
+                <PhotoCapture 
+                  qId={q.id} 
+                  onCapture={(photoData) => addPhoto(q.id, photoData)} 
+                />
+
+                {responses[q.id]?.photos?.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {responses[q.id].photos.map((p, idx) => (
+                      <div key={idx} className="relative flex-shrink-0">
+                        <img 
+                          src={p.url} 
+                          alt="Preuve technique" 
+                          className="w-20 h-20 object-cover rounded-xl border border-slate-100"
+                        />
+                        <button
+                          onClick={() => removePhoto(q.id, idx)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
