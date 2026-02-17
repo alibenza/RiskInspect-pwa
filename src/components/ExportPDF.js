@@ -25,13 +25,13 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
-  doc.text("RAPPORT D'EXPERTISE RISQUE", 15, 25);
+  doc.text("RAPPORT DE VISITE DE RISQUE", 15, 25);
   
   // Infos Auditeur dans le bandeau
   doc.setFontSize(10);
   doc.setTextColor(200, 200, 200);
-  doc.text(`AUDITEUR : ${auditorInfo?.name || 'Non spécifié'}`, 15, 35);
-  doc.text(`CABINET : ${auditorInfo?.company || 'Non spécifié'}`, 15, 41);
+  doc.text(`AUTEUR : ${auditorInfo?.name || 'Non spécifié'}`, 15, 35);
+  doc.text(`ENTREPRISE : ${auditorInfo?.company || 'Non spécifié'}`, 15, 41);
   
   doc.setFontSize(12);
   doc.setTextColor(255, 255, 255);
