@@ -5,7 +5,7 @@ import AIAnalysis from './components/AIAnalysis';
 import InspectionForm from './components/InspectionForm';
 import AuditorSettings from './components/AuditorSettings'; // Importation du nouveau composant
 import { useInspectionStore } from './hooks/useInspectionStore';
-import { exportToPdf } from './utils/ExportPDF'; // Importation de la fonction d'export
+import { exportToPdf } from './components/ExportPDF'; // Importation de la fonction d'export
 import { FileDown } from 'lucide-react';
 
 function App() {
