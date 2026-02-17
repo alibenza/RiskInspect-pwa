@@ -1,60 +1,73 @@
 import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import { BrainCircuit, Sparkles, Loader2, AlertCircle, ShieldCheck, Globe2 } from 'lucide-react';
+import { 
+  BrainCircuit, Sparkles, Loader2, ShieldCheck, 
+  Flame, Droplets, Lock, Users, Activity, Check,
+  AlertTriangle, Gauge, Globe2
+} from 'lucide-react';
 
 const AIAnalysis = () => {
   const { responses, questionsConfig, aiResults, setAiResults } = useInspectionStore();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [selectedGaranties, setSelectedGaranties] = useState(['Incendie', 'PE']);
 
-  const runAnalysis = async () => {
+  const garantiesLib = [
+    { id: 'Incendie', label: 'Incendie & Explosion', icon: <Flame size={16} />, color: 'text-orange-500' },
+    { id: 'DDE', label: 'Dégâts des Eaux', icon: <Droplets size={16} />, color: 'text-blue-500' },
+    { id: 'Vol', label: 'Vol & Vandalisme', icon: <Lock size={16} />, color: 'text-slate-600' },
+    { id: 'RC', label: 'Resp. Civile', icon: <Users size={16} />, color: 'text-purple-500' },
+    { id: 'PE', label: 'Pertes d’Exploitation', icon: <Activity size={16} />, color: 'text-emerald-500' },
+  ];
+
+  const toggleGarantie = (id) => {
+    setSelectedGaranties(prev => 
+      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+    );
+  };
+
+  const runDetailedAnalysis = async () => {
     setLoading(true);
-    setError(null);
     try {
-      // 1. Extraction de la Nature de l'Activité (Valeur Pivot)
       const natureActivite = responses['activite_nature']?.value || "Non spécifiée";
-
-      // 2. Extraction du contexte géographique (via la première photo avec GPS)
-      const photoWithGPS = Object.values(responses).find(r => r.photos?.length > 0)?.photos[0];
-      const gpsContext = photoWithGPS 
-        ? `Coordonnées GPS: Lat ${photoWithGPS.coords.lat.toFixed(4)}, Lon ${photoWithGPS.coords.lng.toFixed(4)}` 
-        : "Localisation exacte non fournie (utiliser le contexte général)";
-
-      // 3. Construction du résumé des données terrain
+      
+      // Extraction du résumé technique pour le prompt
       const dataSummary = questionsConfig.map(section => {
         const sectionResponses = section.questions
           .map(q => {
             const r = responses[q.id];
             if (!r) return null;
-            return `[${q.label}] : Réponse=${r.value || r.score + '/5'}. Obs: ${r.comment || 'N/A'}`;
+            return `[${q.label}] : ${r.value || r.score + '/5'}. Obs: ${r.comment || 'N/A'}. Photos: ${r.photos?.length || 0}`;
           })
-          .filter(Boolean)
-          .join('\n');
+          .filter(Boolean).join('\n');
         return `SECTION: ${section.title}\n${sectionResponses}`;
       }).join('\n\n');
 
-      const promptStrict = `Tu es un Ingénieur Expert en Prévention des Risques IARD. 
-      Ton analyse doit croiser les données de terrain avec des recherches contextuelles externes.
+      const promptStrict = `
+        En tant qu'Ingénieur Souscripteur Senior, analyse le risque suivant :
+        ACTIVITÉ : "${natureActivite}"
+        GARANTIES CIBLÉES : ${selectedGaranties.join(', ')}
+        DONNÉES TERRAIN : ${dataSummary}
 
-      CONTEXTE MAÎTRE :
-      - NATURE DE L'ACTIVITÉ : "${natureActivite}"
-      - EMPLACEMENT : ${gpsContext}
-
-      DONNÉES DU SITE :
-      ${dataSummary}
-
-      TES MISSIONS D'ANALYSE :
-      1. ACCIDENTOLOGIE & BENCHMARK : Analyse les statistiques d'accidents et de sinistres (incendie, explosion, bris de machine) spécifiquement pour la nature d'activité "${natureActivite}". Quelles sont les causes racines les plus fréquentes dans ce secteur ?
-      2. EXPOSITION ALÉAS NATURELS (NAT-CAT) : En te basant sur la localisation et ton expertise, évalue l'exposition aux risques naturels (Séisme, Inondation, Retrait-Gonflement des Argiles, vents cycloniques).
-      3. INTERPRÉTATION CROISÉE : Relie les manquements observés sur le terrain (données fournies) aux risques majeurs identifiés pour cette activité.
-
-      FORMAT DE RÉPONSE JSON EXCLUSIF :
-      {
-        "synthese": "Rédaction professionnelle (15 lignes) incluant l'accidentologie secteur et l'exposition géographique...",
-        "pointsForts": ["Technique/Humain", "Technique/Humain", "Technique/Humain"],
-        "pointsFaibles": ["Vulnérabilité sectorielle", "Faille terrain", "Risque externe"],
-        "recommandations": ["Priorité 1 (Impact ROI)", "Priorité 2", "Priorité 3"]
-      }`;
+        CONSIGNES POUR CHAQUE GARANTIE :
+        1. EXPOSITION : Note de 1 à 10 (10=Risque critique).
+        2. ANALYSE : Croise l'accidentologie de "${natureActivite}" avec les preuves terrain.
+        3. CONFIDENCE SCORE : De 0 à 100%. Évalue si les données fournies (réponses + photos) sont suffisantes pour conclure.
+        
+        FORMAT JSON REQUIS :
+        {
+          "introduction": "Synthèse globale du profil...",
+          "analyses": [
+            {
+              "garantie": "Nom",
+              "exposition": 7,
+              "confidence": 85,
+              "avis": "Détail technique...",
+              "points_noirs": ["..."]
+            }
+          ],
+          "recommandation_maitresse": "L'action n°1 à exiger..."
+        }
+      `;
 
       const r = await fetch("https://api.mistral.ai/v1/chat/completions", {
         method: 'POST',
@@ -65,132 +78,126 @@ const AIAnalysis = () => {
         body: JSON.stringify({
           model: "mistral-small-latest",
           messages: [
-            { role: "system", content: "Tu es un expert en ingénierie du risque. Ton ton est formel, technique et analytique. Tu intègres des données de benchmark sectoriel et d'exposition NAT-CAT." }, 
+            { role: "system", content: "Tu es un expert en tarification et prévention des risques industriels. Ton analyse est stricte et basée sur des preuves." }, 
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.7
+          temperature: 0.4
         })
       });
 
-      if (!r.ok) throw new Error('Erreur API Mistral');
-
       const d = await r.json();
-      const content = JSON.parse(d.choices[0].message.content);
-      setAiResults(content);
+      setAiResults(JSON.parse(d.choices[0].message.content));
     } catch (e) {
       console.error(e);
-      setError("Erreur lors de la génération de l'expertise contextuelle.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Header avec indicateur de Nature d'Activité */}
-      <div className="bg-slate-900 p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <BrainCircuit className="text-indigo-400" />
-            <h2 className="text-xl font-bold uppercase tracking-tighter">Analyse Contextuelle IA</h2>
+    <div className="p-4 space-y-6 pb-20">
+      {/* HEADER CONSOLE */}
+      <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500 rounded-xl"><BrainCircuit size={24} /></div>
+            <h2 className="text-xl font-black uppercase tracking-tighter">Console de Souscription IA</h2>
           </div>
-          {responses['activite_nature']?.value && (
-            <div className="bg-indigo-500/20 px-4 py-1 rounded-full border border-indigo-500/30 flex items-center gap-2">
-              <Globe2 size={12} className="text-indigo-300" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">
-                {responses['activite_nature'].value}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="absolute -right-10 -bottom-10 opacity-10">
-          <BrainCircuit size={160} />
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
+            <Globe2 size={12} /> Analyse dynamique : {responses['activite_nature']?.value || "Activité non définie"}
+          </p>
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-50 text-red-600 rounded-2xl flex items-center gap-3 text-sm font-bold border border-red-100 animate-shake">
-          <AlertCircle size={18} /> {error}
+      {/* SÉLECTEUR DE GARANTIES */}
+      <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+        <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-4 block">Périmètres de l'analyse</label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {garantiesLib.map(g => (
+            <button
+              key={g.id}
+              onClick={() => toggleGarantie(g.id)}
+              className={`flex items-center gap-2 p-3 rounded-2xl text-[10px] font-black uppercase transition-all border-2 ${
+                selectedGaranties.includes(g.id) 
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-600' 
+                : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'
+              }`}
+            >
+              <span className={selectedGaranties.includes(g.id) ? g.color : 'text-slate-300'}>{g.icon}</span>
+              {g.label}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {!aiResults && !loading ? (
         <button 
-          onClick={runAnalysis} 
-          className="w-full py-12 border-2 border-dashed border-slate-200 rounded-[2rem] bg-white flex flex-col items-center gap-3 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group"
+          onClick={runDetailedAnalysis}
+          className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.3em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 animate-pulse"
         >
-          <div className="p-4 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform">
-            <Sparkles className="text-indigo-600" size={32} />
-          </div>
-          <div className="text-center">
-            <span className="block font-black uppercase text-[10px] tracking-[0.2em] text-slate-800">Lancer l'expertise métier</span>
-            <span className="text-[10px] text-slate-400 italic">Croisement Accidentologie & NAT-CAT</span>
-          </div>
+          Générer l'expertise de souscription
         </button>
       ) : loading ? (
-        <div className="p-12 text-center bg-white rounded-[2rem] shadow-sm border border-slate-100">
-          <Loader2 className="animate-spin mx-auto text-indigo-600 mb-4" size={32} />
-          <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2">Analyse de la nature d'activité : "{responses['activite_nature']?.value}"</p>
-          <div className="w-48 h-1 bg-slate-100 mx-auto rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 animate-progress"></div>
-          </div>
+        <div className="p-12 text-center bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+          <Loader2 className="animate-spin mx-auto text-indigo-600 mb-4" size={40} />
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse">Recherche d'accidentologie sectorielle...</p>
         </div>
       ) : (
-        <div className="space-y-6 animate-in zoom-in-95 duration-500 pb-20">
-          {/* Synthèse Principale */}
-          <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden">
-            <div className="flex items-center gap-2 mb-6 text-indigo-600">
-              <ShieldCheck size={20} />
-              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Rapport de Prévention Décisionnel</span>
-            </div>
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap relative z-10">
-              {aiResults.synthese}
-            </p>
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+          {/* INTRO IA */}
+          <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-lg">
+            <ShieldCheck className="mb-4 opacity-50" size={32} />
+            <p className="text-sm font-medium leading-relaxed italic opacity-90">"{aiResults.introduction}"</p>
           </div>
 
-          {/* Grille de détails IA */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100">
-              <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-4">Points de Rassurance</h4>
-              <ul className="space-y-3">
-                {aiResults.pointsForts.map((pt, i) => (
-                  <li key={i} className="text-xs text-emerald-800 flex gap-2">
-                    <span className="opacity-50">•</span> {pt}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-red-50/50 p-6 rounded-[2rem] border border-red-100">
-              <h4 className="text-[10px] font-black text-red-700 uppercase tracking-widest mb-4">Vulnérabilités Métier</h4>
-              <ul className="space-y-3">
-                {aiResults.pointsFaibles.map((pt, i) => (
-                  <li key={i} className="text-xs text-red-800 flex gap-2">
-                    <span className="opacity-50">•</span> {pt}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* ANALYSES PAR GARANTIE */}
+          <div className="grid gap-4">
+            {aiResults.analyses.map((gar, idx) => (
+              <div key={idx} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h4 className="font-black text-xs text-slate-900 uppercase tracking-wider">{gar.garantie}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Gauge size={12} className="text-slate-300" />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Fiabilité des données : {gar.confidence}%</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[20px] font-black text-slate-900 leading-none">{gar.exposition}<span className="text-[10px] text-slate-300">/10</span></div>
+                    <div className="text-[8px] font-black uppercase text-slate-400">Exposition</div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl mb-4">
+                  <p className="text-xs text-slate-600 leading-relaxed italic">{gar.avis}</p>
+                </div>
+
+                <div className="space-y-2">
+                  {gar.points_noirs.map((pn, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg border border-red-100/50">
+                      <AlertTriangle size={12} /> {pn}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
-             <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-6">Actions de Maîtrise Prioritaires</h4>
-             <div className="space-y-4">
-               {aiResults.recommandations.map((rec, i) => (
-                 <div key={i} className="flex gap-4 items-start p-4 bg-slate-50 rounded-2xl">
-                   <span className="bg-indigo-600 text-white text-[10px] font-black h-5 w-5 flex items-center justify-center rounded-lg flex-shrink-0">{i+1}</span>
-                   <p className="text-xs text-slate-700 font-medium">{rec}</p>
-                 </div>
-               ))}
-             </div>
+          {/* RECOMMANDATION MAITRESSE */}
+          <div className="bg-slate-900 p-8 rounded-[2rem] text-white">
+            <div className="flex items-center gap-3 mb-4">
+              <Sparkles className="text-indigo-400" size={20} />
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Action Corrective Prioritaire</h4>
+            </div>
+            <p className="text-sm font-bold leading-relaxed">{aiResults.recommandation_maitresse}</p>
+            <button 
+              onClick={() => setAiResults(null)}
+              className="mt-8 text-[9px] font-black uppercase text-slate-500 hover:text-white transition-colors"
+            >
+              ↻ Relancer l'agent IA
+            </button>
           </div>
-
-          <button 
-            onClick={() => setAiResults(null)}
-            className="w-full py-4 text-[10px] font-bold text-slate-300 uppercase hover:text-red-500 transition-colors"
-          >
-            ↻ Relancer une nouvelle analyse
-          </button>
         </div>
       )}
     </div>
