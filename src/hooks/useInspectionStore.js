@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export const useInspectionStore = create((set) => ({
-  // CONFIGURATION INITIALE (Basée sur ton document Word)
+  // CONFIGURATION INITIALE (Basée sur votre document Word)
   questionsConfig: [
     {
       title: "Informations Générales",
@@ -73,7 +73,29 @@ export const useInspectionStore = create((set) => ({
     }
   })),
 
-  // ACTIONS POUR AJOUTER DYNAMIQUEMENT
+  // --- NOUVELLES ACTIONS POUR LES PHOTOS ---
+  addPhoto: (qId, photoData) => set((state) => ({
+    responses: {
+      ...state.responses,
+      [qId]: {
+        ...state.responses[qId],
+        photos: [...(state.responses[qId]?.photos || []), photoData]
+      }
+    }
+  })),
+
+  removePhoto: (qId, photoIndex) => set((state) => ({
+    responses: {
+      ...state.responses,
+      [qId]: {
+        ...state.responses[qId],
+        photos: (state.responses[qId]?.photos || []).filter((_, i) => i !== photoIndex)
+      }
+    }
+  })),
+  // ------------------------------------------
+
+  // ACTIONS POUR AJOUTER DYNAMIQUEMENT DES QUESTIONS/SECTIONS
   addSection: (title) => set((state) => ({
     questionsConfig: [...state.questionsConfig, { title: title, questions: [] }]
   })),
