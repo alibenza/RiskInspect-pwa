@@ -57,8 +57,8 @@ export const useInspectionStore = create(
             { id: 'inc_detection', label: "Détection (Type, zones, centralisation)", isScored: true },
             { id: 'inc_mobile', label: "Moyens mobiles (Type, Répartition, mise à jour)", isScored: true },
             { id: 'inc_hydraulique', label: "Réseau hydraulique (Capacité, RIA, Poteaux)", isScored: true },
-            { id: 'inc_ext_auto', label: "Systèmes automatiques (Sprinkler, Gaz inertes)", isScored: true }
-            { id: 'signalisation', label: "Systèmes signalisation (Dangers, Risques, Urgences)", isScored: true }
+            { id: 'inc_ext_auto', label: "Systèmes automatiques (Sprinkler, Gaz inertes)", isScored: true },
+            { id: 'signalisation', label: "Systèmes signalisation (Dangers, Risques, Urgences)", isScored: true },
             { id: 'protec_civil', label: "Protection Civile (Proximité, Exercices)", isScored: false }
           ]
         },
