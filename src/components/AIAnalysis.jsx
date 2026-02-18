@@ -208,3 +208,4 @@ const AIAnalysis = () => {
     </div>
   );
 };
+export default AIAnalysis;
