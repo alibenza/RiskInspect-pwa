@@ -1,36 +1,28 @@
 import React from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import { exportToPdf } from './ExportPDF'; // Vérifiez bien le nom du fichier (ExportPDF.js)
+import { exportToPdf } from './ExportPDF'; 
 import { 
   LayoutDashboard, 
   ClipboardCheck, 
   BrainCircuit, 
   FileDown, 
-  RotateCcw 
+  History as HistoryIcon // Import de l'icône d'historique
 } from 'lucide-react';
 
 const MainNavigation = ({ activeTab, setActiveTab }) => {
-  const { responses, questionsConfig, aiResults, resetAudit } = useInspectionStore();
+  const { responses, questionsConfig, aiResults, history } = useInspectionStore();
 
   const handleDownload = () => {
     if (Object.keys(responses).length === 0) {
       alert("L'audit est vide. Veuillez remplir quelques informations avant d'exporter.");
       return;
     }
-    // On lance l'export avec les 3 piliers de données
     exportToPdf(responses, questionsConfig, aiResults);
   };
 
-  const handleReset = () => {
-    if (confirm("Voulez-vous vraiment réinitialiser tout l'audit ?")) {
-      resetAudit();
-      setActiveTab('audit');
-    }
-  };
-
   return (
-    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl z-50 px-6 py-4">
-      <div className="flex items-center justify-between">
+    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl z-50 px-4 py-4">
+      <div className="flex items-center justify-around">
         
         {/* Onglet Audit */}
         <button 
@@ -58,6 +50,20 @@ const MainNavigation = ({ activeTab, setActiveTab }) => {
           <BrainCircuit size={24} />
         </button>
 
+        {/* Onglet Archives (History) */}
+        <button 
+          onClick={() => setActiveTab('history')}
+          className={`relative flex flex-col items-center space-y-1 transition-all ${activeTab === 'history' ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <HistoryIcon size={20} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Archives</span>
+          {history.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-indigo-500 text-[8px] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold">
+              {history.length}
+            </span>
+          )}
+        </button>
+
         {/* Bouton Export PDF */}
         <button 
           onClick={handleDownload}
@@ -66,15 +72,6 @@ const MainNavigation = ({ activeTab, setActiveTab }) => {
         >
           <FileDown size={20} />
           <span className="text-[10px] font-black uppercase tracking-tighter">PDF</span>
-        </button>
-
-        {/* Bouton Reset */}
-        <button 
-          onClick={handleReset}
-          className="flex flex-col items-center space-y-1 text-slate-500 hover:text-red-400 transition-colors"
-        >
-          <RotateCcw size={20} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Reset</span>
         </button>
 
       </div>
