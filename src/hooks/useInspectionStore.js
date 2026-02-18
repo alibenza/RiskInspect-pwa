@@ -47,8 +47,7 @@ export const useInspectionStore = create(
             { id: 'maint_struct', label: "Structure (Moyens humain, Qualifications)", isScored: true },
             {id: 'maint_prog', label: "Programmes de maintenance (Préventive/Curative)", isScored: true },
              {id: 'maint_control', label: "Contrôle Technique (APG, APV, Electricité, Levage)", isScored: true },
-            {id: 'maint_pdr', label: "Magasin de PDR (Existence, Disponibilité)", isScored: true },
-            { id: 'maint_gmao', label: "Gestion Assistée de maintenance (GMAO)", isScored: true }
+            {id: 'maint_pdr', label: "Magasin de PDR (Existence, Disponibilité)", isScored: true }
           ]
         },
         {
