@@ -4,7 +4,7 @@ import {
   BrainCircuit, Loader2, ShieldCheck, Flame, Droplets, Lock, 
   Users, Activity, AlertTriangle, Globe2, MountainSnow, 
   Waves, Wind, Settings2, MapPin, BarChart4, ClipboardList,
-  PlusCircle, Lightbulb
+  PlusCircle, Lightbulb, Target
 } from 'lucide-react';
 
 const AIAnalysis = () => {
@@ -33,7 +33,6 @@ const AIAnalysis = () => {
       const siteAddress = responses['adress']?.value || "Algérie";
       const gpsCoords = responses['pos']?.value || "N/A";
       
-      // Traduction des IDs cochés en labels pour l'IA
       const nomsGarantiesCochees = selectedGaranties
         .map(id => garantiesLib.find(g => g.id === id)?.label)
         .join(", ");
@@ -43,37 +42,39 @@ const AIAnalysis = () => {
           .map(q => {
             const r = responses[q.id];
             if (!r) return null;
-            return `[${q.label}] : ${r.value || r.score + '/5'}. Obs: ${r.comment || 'RAS'}`;
+            return `[${q.label}] : ${r.value || r.score + '/5'}. Observation terrain: ${r.comment || 'RAS'}`;
           })
           .filter(Boolean).join('\n');
-        return `### ${section.title}\n${sectionResponses}`;
+        return `### Section: ${section.title}\n${sectionResponses}`;
       }).join('\n\n');
 
       const promptStrict = `
-        Tu es un Ingénieur Souscripteur Senior IARD (Algérie).
-        
-        DATA TERRAIN :
-        - Activité : "${natureActivite}"
-        - Localisation : ${siteAddress} (${gpsCoords})
-        - Observations : ${dataSummary}
+        Tu es un Ingénieur Souscripteur Senior spécialisé dans le marché de l'assurance IARD en Algérie.
+        Ton objectif est de fournir une analyse de risque prédictive et ultra-technique.
 
-        LOGIQUE D'ANALYSE AMÉLIORÉE :
-        1. ANALYSE COCHÉE : Examine PRIORITAIREMENT ces garanties : ${nomsGarantiesCochees}.
-        2. ANALYSE ÉCART : Propose d'autres garanties cruciales pour l'activité "${natureActivite}" qui manquent à ma sélection.
+        CONTEXTE DU SITE :
+        - Nature de l'activité : "${natureActivite}"
+        - Localisation précise : ${siteAddress} (Coordonnées : ${gpsCoords})
+        - Audit Terrain : ${dataSummary}
 
-        FORMAT DE RÉPONSE JSON STRICT :
+        TES MISSIONS D'EXPERT :
+        1. ANALYSE PROFONDE : Pour chaque garantie sélectionnée (${nomsGarantiesCochees}), évalue le risque en croisant l'activité et les observations terrain.
+        2. VIGILANCE GÉOGRAPHIQUE : Intègre les spécificités locales algériennes (zones sismiques du nord, risques inondation oueds, exposition sirocco/tempêtes).
+        3. DÉTECTION DE LACUNES : Identifie les garanties indispensables pour un(e) "${natureActivite}" que je n'ai PAS sélectionnées.
+
+        FORMAT DE RÉPONSE JSON (STRICT ET VALIDE) :
         {
           "score_global": 0-100,
-          "synthese_executive": "...",
-          "analyse_nat_cat": "...",
-          "points_vigilance_majeurs": ["..."],
+          "synthese_executive": "Analyse de haut niveau sur la pérennité du site.",
+          "analyse_nat_cat": "Focus géologique et climatique spécifique au site.",
+          "points_vigilance_majeurs": ["Point critique 1", "Point critique 2"],
           "analyses_par_garantie": [
-            { "garantie": "Nom exact", "exposition": 1-10, "avis_technique": "...", "recommandations_standards": "..." }
+            { "garantie": "Nom", "exposition": 1-10, "avis_technique": "Analyse croisée", "recommandations_standards": "Mesures concrètes" }
           ],
           "suggestions_complementaires": [
-            { "nom": "Garantie", "justification_technique": "..." }
+            { "nom": "Garantie manquante", "justification_technique": "Pourquoi est-ce vital pour ce métier ?" }
           ],
-          "plan_actions": { "P1": "...", "P2": "...", "P3": "..." }
+          "plan_actions": { "P1": "Priorité Haute", "P2": "Moyen Terme", "P3": "Amélioration Continue" }
         }
       `;
 
@@ -86,11 +87,11 @@ const AIAnalysis = () => {
         body: JSON.stringify({
           model: "mistral-small-latest",
           messages: [
-            { role: "system", content: "Expert technique IARD. Réponds en JSON pur." }, 
+            { role: "system", content: "Tu es un moteur d'expertise assurantielle. Tu ne parles qu'en JSON technique. Ta précision sauve des actifs." }, 
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.1
+          temperature: 0.3 // Légère augmentation pour plus de profondeur sans perte de structure
         })
       });
 
@@ -99,10 +100,14 @@ const AIAnalysis = () => {
       const jsonString = content.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsedData = JSON.parse(jsonString);
 
-      // Sécurisation des données reçues
+      // Sécurisation et formatage des données numériques
       const secureData = {
         ...parsedData,
-        analyses_par_garantie: parsedData.analyses_par_garantie || [],
+        score_global: parseInt(parsedData.score_global) || 0,
+        analyses_par_garantie: (parsedData.analyses_par_garantie || []).map(a => ({
+            ...a,
+            exposition: parseInt(a.exposition) || 5
+        })),
         suggestions_complementaires: parsedData.suggestions_complementaires || [],
         plan_actions: parsedData.plan_actions || {}
       };
@@ -110,45 +115,54 @@ const AIAnalysis = () => {
       setAiResults(secureData);
 
     } catch (e) {
-      console.error("Erreur:", e);
-      alert("Erreur d'analyse. Vérifiez vos données.");
+      console.error("Erreur Expertise:", e);
+      alert("L'analyse technique a rencontré une erreur de format. Réessayez.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24">
-      {/* HEADER */}
-      <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+    <div className="p-4 space-y-6 pb-24 max-w-5xl mx-auto">
+      {/* HEADER AMÉLIORÉ */}
+      <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border-b-4 border-indigo-500">
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+            <BrainCircuit size={120} />
+        </div>
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-indigo-500 rounded-xl shadow-lg"><BrainCircuit size={24} /></div>
-            <h2 className="text-xl font-black uppercase tracking-tighter italic">Risk Intelligence AI</h2>
+            <div className="p-2 bg-indigo-500 rounded-xl shadow-lg animate-pulse"><Target size={24} /></div>
+            <h2 className="text-xl font-black uppercase tracking-tighter italic">Precision Risk Engine</h2>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10 w-fit">
-              <Globe2 size={12} className="text-indigo-400" /> 
-              <span className="text-[9px] font-bold uppercase tracking-widest">{responses['activite_nature']?.value || "Activité non définie"}</span>
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-indigo-500/20 rounded-full border border-indigo-400/30 w-fit">
+              <Globe2 size={12} className="text-indigo-300" /> 
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100">
+                {responses['activite_nature']?.value || "Analyse Multisectorielle"}
+              </span>
           </div>
         </div>
       </div>
 
       {!aiResults ? (
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm animate-in fade-in duration-500">
-          <div className="mb-6 px-2">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Périmètre de l'expertise</h3>
-            <p className="text-[11px] text-slate-500 italic">Cochez les garanties à analyser via l'IA</p>
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
+          <div className="mb-8">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 mb-1">Configuration de l'Expertise</h3>
+            <p className="text-xs text-slate-400">Sélectionnez les garanties à soumettre à l'analyse prédictive.</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {garantiesLib.map(g => (
               <button
                 key={g.id}
                 onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])}
-                className={`flex flex-col gap-3 p-4 rounded-2xl text-[9px] font-black uppercase transition-all border-2 text-left ${
-                  selectedGaranties.includes(g.id) ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-50 text-slate-400'
+                className={`flex flex-col gap-4 p-5 rounded-[1.5rem] text-[9px] font-black uppercase transition-all border-2 text-left group ${
+                  selectedGaranties.includes(g.id) 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                    : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'
                 }`}
               >
-                <div className={selectedGaranties.includes(g.id) ? g.color : 'text-slate-300'}>{g.icon}</div>
+                <div className={`${selectedGaranties.includes(g.id) ? 'text-white' : g.color} group-hover:scale-110 transition-transform`}>
+                    {g.icon}
+                </div>
                 {g.label}
               </button>
             ))}
@@ -156,89 +170,110 @@ const AIAnalysis = () => {
           <button 
             onClick={runDetailedAnalysis} 
             disabled={loading}
-            className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-100 active:scale-95 transition-all disabled:opacity-50"
+            className="w-full mt-8 py-6 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:bg-indigo-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
           >
-            {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> Analyse des risques en cours...</span> : "Générer le rapport IA"}
+            {loading ? (
+                <>
+                    <Loader2 className="animate-spin" size={20} /> 
+                    Analyse Technique Mistral-AI...
+                </>
+            ) : "Lancer l'Expertise Souscription"}
           </button>
         </div>
       ) : (
-        <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-700">
+        <div className="space-y-6 animate-in slide-in-from-bottom-10 duration-1000">
           
-          {/* DASHBOARD SCORE */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col items-center justify-center">
-              <div className="text-5xl font-black text-indigo-400">{aiResults.score_global}%</div>
-              <div className="text-[9px] font-black uppercase mt-2 tracking-widest text-slate-500">Protection Global</div>
+          {/* DASHBOARD PRINCIPAL */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col items-center justify-center border-b-8 border-indigo-500">
+              <div className="text-6xl font-black text-white">{aiResults.score_global}%</div>
+              <div className="text-[9px] font-black uppercase mt-3 tracking-widest text-indigo-400 text-center">Indice de Maîtrise</div>
             </div>
-            <div className="md:col-span-2 bg-indigo-600 p-8 rounded-[2.5rem] text-white flex items-center shadow-xl">
-               <p className="text-sm font-bold italic leading-relaxed">"{aiResults.synthese_executive}"</p>
+            <div className="md:col-span-3 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center">
+               <div className="space-y-2">
+                 <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Synthèse Décisionnelle</span>
+                 <p className="text-sm font-bold text-slate-700 italic leading-relaxed">"{aiResults.synthese_executive}"</p>
+               </div>
             </div>
           </div>
 
-          {/* SUGGESTIONS INTELLIGENTES */}
+          {/* SUGGESTIONS DE L'IA */}
           {aiResults.suggestions_complementaires?.length > 0 && (
-            <div className="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-100 border-l-8 border-l-amber-400">
-              <div className="flex items-center gap-2 mb-4 text-amber-700">
-                <Lightbulb size={18} />
-                <h3 className="font-black text-[10px] uppercase tracking-widest">Conseils d'extension de garanties</h3>
+            <div className="bg-indigo-50 p-8 rounded-[2.5rem] border border-indigo-100 border-l-8 border-l-indigo-600">
+              <div className="flex items-center gap-3 mb-6 text-indigo-900">
+                <Lightbulb className="text-indigo-600" />
+                <h3 className="font-black text-xs uppercase tracking-widest">Conseils d'Expertise Sectorielle</h3>
               </div>
-              <div className="grid gap-3">
+              <div className="grid md:grid-cols-2 gap-4">
                 {aiResults.suggestions_complementaires.map((sug, i) => (
-                  <div key={i} className="bg-white p-4 rounded-xl border border-amber-200/50">
-                    <span className="text-[9px] font-black text-amber-600 uppercase block mb-1">{sug.nom}</span>
-                    <p className="text-[11px] text-slate-600">{sug.justification_technique}</p>
+                  <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-indigo-200/50">
+                    <span className="text-[10px] font-black text-indigo-600 uppercase block mb-2">{sug.nom}</span>
+                    <p className="text-[11px] text-slate-600 leading-normal">{sug.justification_technique}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* DÉTAILS PAR GARANTIE */}
-          <div className="space-y-4">
-            {(aiResults.analyses_par_garantie || []).map((gar, idx) => (
-              <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:border-indigo-100 transition-all">
-                <div className="flex justify-between items-center mb-6">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-slate-100 rounded-lg"><BarChart4 size={14} className="text-slate-600" /></div>
-                    <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight">{gar.garantie}</h4>
-                  </div>
-                  <div className={`px-4 py-2 rounded-xl font-black text-[10px] ${gar.exposition > 6 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    RISQUE: {gar.exposition}/10
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                   <div className="bg-slate-50 p-6 rounded-3xl text-[11px] text-slate-700 border border-slate-100">
-                     <span className="block text-[8px] font-black text-indigo-500 uppercase mb-2">Diagnostic Souscription</span>
-                     {gar.avis_technique}
-                   </div>
-                   <div className="bg-indigo-50/30 p-6 rounded-3xl border border-indigo-100 text-[11px] text-indigo-900 font-bold">
-                     <span className="block text-[8px] font-black text-indigo-400 uppercase mb-2">Mesures de Prévention</span>
-                     {gar.recommandations_standards}
-                   </div>
+          {/* ANALYSES DÉTAILLÉES */}
+          <div className="grid gap-4">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4 mb-2 flex items-center gap-2">
+                <ShieldCheck size={14} /> Revue technique par garantie
+            </h3>
+            {aiResults.analyses_par_garantie.map((gar, idx) => (
+              <div key={idx} className="bg-white overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-sm group hover:shadow-md transition-shadow">
+                <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-50">
+                    <div className="p-8 md:w-1/3 bg-slate-50/50">
+                        <h4 className="font-black text-xs text-slate-900 uppercase mb-4">{gar.garantie}</h4>
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+                                <span>Exposition</span>
+                                <span>{gar.exposition}/10</span>
+                            </div>
+                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div 
+                                    className={`h-full transition-all duration-1000 ${gar.exposition > 7 ? 'bg-rose-500' : gar.exposition > 4 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                    style={{ width: `${gar.exposition * 10}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-8 md:w-2/3 space-y-4">
+                        <div className="text-[11px] text-slate-600">
+                             <strong className="text-indigo-600 uppercase text-[9px] block mb-1">Analyse du Risque</strong>
+                             {gar.avis_technique}
+                        </div>
+                        <div className="text-[11px] text-indigo-900 font-bold bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50">
+                             <strong className="text-indigo-400 uppercase text-[9px] block mb-1">Standard de Prévention Préconisé</strong>
+                             {gar.recommandations_standards}
+                        </div>
+                    </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* PLAN D'ACTION FINALE */}
-          <div className="bg-slate-900 p-10 rounded-[3rem] text-white">
-            <h3 className="font-black text-xs uppercase text-indigo-400 mb-10 flex items-center gap-2">
-              <ClipboardList size={18} /> Recommandations Prioritaires
-            </h3>
-            <div className="space-y-6">
-               {Object.entries(aiResults.plan_actions || {}).map(([key, val]) => (
-                 <div key={key} className="flex gap-6 border-l border-slate-800 pl-6 group">
-                   <div className="font-black text-indigo-500 text-sm group-hover:text-white transition-colors">{key}</div>
-                   <div className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors leading-relaxed">{val}</div>
-                 </div>
-               ))}
+          {/* RECOMMANDATIONS FINALES */}
+          <div className="bg-slate-900 p-12 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
+            <div className="relative z-10">
+                <h3 className="font-black text-xs uppercase text-indigo-400 mb-10 flex items-center gap-3">
+                <ClipboardList size={20} /> Plan d'Action Prioritaire
+                </h3>
+                <div className="grid gap-6">
+                {Object.entries(aiResults.plan_actions).map(([key, val]) => (
+                    <div key={key} className="flex gap-8 group">
+                    <div className="font-black text-indigo-500 text-lg opacity-50 group-hover:opacity-100 transition-opacity">{key}</div>
+                    <div className="text-sm text-slate-300 border-l border-slate-800 pl-8 leading-relaxed group-hover:text-white transition-colors">{val}</div>
+                    </div>
+                ))}
+                </div>
+                <button 
+                onClick={() => { setAiResults(null); window.scrollTo({top: 0, behavior: 'smooth'}); }} 
+                className="w-full mt-12 py-5 bg-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 transition-all flex items-center justify-center gap-2"
+                >
+                ↻ Réinitialiser l'analyse
+                </button>
             </div>
-            <button 
-              onClick={() => { setAiResults(null); window.scrollTo({top: 0, behavior: 'smooth'}); }} 
-              className="w-full mt-10 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-white/5 transition-all"
-            >
-              ↻ Modifier le périmètre d'analyse
-            </button>
           </div>
         </div>
       )}
