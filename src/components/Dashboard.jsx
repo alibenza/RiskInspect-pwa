@@ -6,9 +6,11 @@ import {
   CategoryScale, LinearScale, BarElement 
 } from 'chart.js';
 import { Radar, Bar } from 'react-chartjs-2';
-import { ShieldCheck, AlertTriangle, Target, Activity, Gauge, ShieldAlert, Globe2, ClipboardCheck } from 'lucide-react';
+import { 
+  ShieldCheck, AlertTriangle, Target, Activity, Gauge, 
+  ShieldAlert, Globe2, ClipboardCheck, Zap, ArrowUpRight 
+} from 'lucide-react';
 
-// Enregistrement des composants Chart.js
 ChartJS.register(
   RadialLinearScale, PointElement, LineElement, Filler, 
   Tooltip, Legend, CategoryScale, LinearScale, BarElement
@@ -17,22 +19,22 @@ ChartJS.register(
 const Dashboard = () => {
   const { aiResults, responses } = useInspectionStore();
 
-  // Score de conformité terrain (basé sur tes saisies 1-5)
+  // Score de conformité terrain
   const scoredQ = Object.values(responses).filter(r => r.isScored);
   const globalScore = scoredQ.length 
     ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) 
     : 0;
 
-  // --- CONFIGURATION RADAR (Exposition par Garantie) ---
+  // --- CONFIGURATION RADAR (Exposition IA) ---
   const radarData = {
     labels: aiResults?.analyses_par_garantie?.map(an => an.garantie) || [],
     datasets: [{
-      label: 'Niveau d\'Exposition',
+      label: 'Exposition au Risque',
       data: aiResults?.analyses_par_garantie?.map(an => an.exposition) || [],
-      backgroundColor: 'rgba(79, 70, 229, 0.2)',
-      borderColor: 'rgba(79, 70, 229, 1)',
+      backgroundColor: 'rgba(99, 102, 241, 0.2)',
+      borderColor: '#6366f1',
       borderWidth: 3,
-      pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+      pointBackgroundColor: '#6366f1',
       pointRadius: 4,
     }]
   };
@@ -46,134 +48,159 @@ const Dashboard = () => {
         beginAtZero: true, 
         max: 10, 
         ticks: { display: false, stepSize: 2 },
-        grid: { color: '#e2e8f0' },
-        angleLines: { color: '#e2e8f0' }
+        grid: { color: 'rgba(226, 232, 240, 0.5)' },
+        angleLines: { color: 'rgba(226, 232, 240, 0.5)' }
       }
     }
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24 animate-in fade-in duration-500">
+    <div className="p-4 space-y-6 pb-24 animate-in fade-in duration-700 bg-slate-50/50">
       
-      {/* SECTION DES SCORES PRINCIPAUX */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Score de Conformité Terrain */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Terrain</p>
+      {/* KPI SECTION : LE DUEL DES SCORES */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden group">
+          <div className="relative z-10">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Indice de Conformité</p>
             <h3 className="text-4xl font-black text-slate-900">{globalScore}%</h3>
+            <span className="text-[9px] font-bold text-slate-400">Basé sur l'audit terrain</span>
           </div>
-          <div className={`p-4 rounded-2xl ${globalScore > 70 ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'}`}>
-            <ClipboardCheck size={32} />
-          </div>
+          <ClipboardCheck className="absolute right-6 top-6 text-slate-100 group-hover:text-emerald-500/20 transition-colors" size={60} />
         </div>
 
-        {/* Score Qualité Risque IA */}
-        <div className="bg-slate-900 p-6 rounded-[2rem] shadow-xl flex items-center justify-between text-white">
-          <div>
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Qualité Risque (IA)</p>
-            <h3 className="text-4xl font-black">{aiResults?.score_global || '--'}%</h3>
-          </div>
-          <div className="p-4 bg-indigo-500/20 rounded-2xl text-indigo-400">
-            <Activity size={32} />
+        <div className="bg-slate-900 p-6 rounded-[2.5rem] shadow-xl text-white md:col-span-2 relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-1/2 h-full bg-indigo-500/10 skew-x-12 translate-x-20" />
+          <div className="relative z-10 flex justify-between items-center">
+            <div>
+              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <Zap size={12} fill="currentColor" /> Qualité Risque (Expertise AI)
+              </p>
+              <h3 className="text-5xl font-black">{aiResults?.score_global || '--'}%</h3>
+              <p className="text-xs text-indigo-300/60 mt-2 max-w-md font-medium italic">
+                {aiResults?.synthese_executive?.substring(0, 100)}...
+              </p>
+            </div>
+            <div className="hidden sm:block p-6 bg-indigo-500 rounded-3xl shadow-lg shadow-indigo-500/20">
+              <Activity size={40} />
+            </div>
           </div>
         </div>
       </div>
 
       {!aiResults ? (
-        <div className="bg-indigo-50/30 p-16 rounded-[3rem] border-2 border-dashed border-indigo-100 text-center">
-          <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <ShieldAlert className="text-indigo-500" size={32} />
+        <div className="bg-white p-20 rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
+          <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert className="text-slate-300 animate-pulse" size={40} />
           </div>
-          <h3 className="text-indigo-900 font-bold mb-1">Analyse experte en attente</h3>
-          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Lancez l'expertise IA pour voir les graphiques</p>
+          <h3 className="text-slate-900 font-black uppercase text-xs tracking-widest">En attente d'analyse IA</h3>
+          <p className="text-slate-400 text-[10px] mt-2 italic">Veuillez lancer l'analyse dans l'onglet Underwriting</p>
         </div>
       ) : (
-        <div className="space-y-6 animate-in slide-in-from-bottom-6 duration-700">
+        <div className="space-y-6 animate-in slide-in-from-bottom-10 duration-1000">
           
-          {/* ANALYSE VISUELLE */}
+          {/* GRAPHIQUES ET NAT-CAT */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* RADAR D'EXPOSITION */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative">
               <div className="flex items-center justify-between mb-8">
-                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                  <ShieldAlert size={16} className="text-indigo-500" /> Profil d'Exposition
-                </h4>
-                <span className="text-[9px] font-black px-2 py-1 bg-slate-100 rounded text-slate-500">Échelle 0-10</span>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600"><Gauge size={20} /></div>
+                  <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Profil d'Exposition IA</h4>
+                </div>
               </div>
-              <div className="h-72">
+              <div className="h-80">
                 <Radar data={radarData} options={chartOptions} />
               </div>
             </div>
 
-            {/* FOCUS NAT-CAT ALGERIE */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
-              <Globe2 className="absolute top-[-20px] right-[-20px] text-slate-50 opacity-10" size={200} />
-              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2 relative z-10">
-                <Globe2 size={16} className="text-cyan-500" /> Exposition Aléas (Nat-Cat)
-              </h4>
-              <div className="space-y-4 relative z-10">
-                <div className="p-5 bg-cyan-50/50 rounded-2xl border border-cyan-100">
-                  <p className="text-[11px] text-cyan-900 leading-relaxed font-medium italic">
-                    {aiResults.analyse_nat_cat.substring(0, 200)}...
-                  </p>
+            {/* NAT-CAT ALGERIE DYNAMIQUE */}
+            <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col">
+              <div className="flex items-center gap-3 mb-6 text-cyan-600">
+                <div className="p-2 bg-cyan-50 rounded-xl"><Globe2 size={20} /></div>
+                <h4 className="text-[11px] font-black uppercase tracking-tighter">Diagnostic Aléas Naturels (Algérie)</h4>
+              </div>
+              <div className="flex-1 space-y-6">
+                <div className="p-6 bg-slate-900 rounded-[2rem] text-white relative overflow-hidden group">
+                   <div className="relative z-10">
+                     <p className="text-[11px] text-slate-300 leading-relaxed italic">
+                       {aiResults.analyse_nat_cat}
+                     </p>
+                   </div>
+                   <Globe2 className="absolute -bottom-10 -right-10 text-white/5" size={150} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Sismicité</p>
-                    <p className="text-[11px] font-bold text-slate-700">Zone Nord Algérie</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Référence</p>
-                    <p className="text-[11px] font-bold text-slate-700">MunichRe / SwissRe</p>
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                      <p className="text-[8px] font-black text-amber-600 uppercase mb-1">Risque Sismique</p>
+                      <p className="text-[11px] font-bold text-slate-800">Zone RPA {aiResults.analyse_nat_cat.toLowerCase().includes('nord') ? 'III/II' : 'I'}</p>
+                   </div>
+                   <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                      <p className="text-[8px] font-black text-blue-600 uppercase mb-1">Référence Normative</p>
+                      <p className="text-[11px] font-bold text-slate-800">Normes ASAL / CNAT</p>
+                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* POINTS CRITIQUES & VIGILANCE */}
+          {/* VIGILANCE CRITIQUE */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
-              <h4 className="text-[10px] font-black text-emerald-700 uppercase mb-6 flex items-center gap-2">
-                <ShieldCheck size={18}/> Maîtrise Positive
-              </h4>
-              <div className="grid gap-3">
-                {aiResults.analyses_par_garantie?.filter(an => an.exposition < 5).map((an, i) => (
-                  <div key={i} className="flex items-center gap-3 text-[11px] font-bold text-emerald-800 bg-white/60 p-3 rounded-xl">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    {an.garantie}
-                  </div>
-                ))}
-              </div>
-            </div>
+             {/* ALERTES ROUGES */}
+             <div className="bg-rose-50 p-8 rounded-[3rem] border border-rose-100 relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-6">
+                  <AlertTriangle className="text-rose-600 animate-bounce" size={24} />
+                  <h4 className="text-[11px] font-black text-rose-800 uppercase tracking-widest">Alertes de Souscription</h4>
+                </div>
+                <div className="space-y-3">
+                  {aiResults.points_vigilance_majeurs?.map((v, i) => (
+                    <div key={i} className="bg-white p-4 rounded-2xl flex gap-4 shadow-sm group hover:scale-[1.02] transition-transform">
+                       <span className="w-10 h-10 shrink-0 bg-rose-100 rounded-xl flex items-center justify-center font-black text-rose-600 text-xs">!</span>
+                       <p className="text-[11px] font-bold text-slate-700">{v}</p>
+                    </div>
+                  ))}
+                </div>
+             </div>
 
-            <div className="bg-rose-50 p-8 rounded-[2.5rem] border border-rose-100">
-              <h4 className="text-[10px] font-black text-rose-700 uppercase mb-6 flex items-center gap-2">
-                <AlertTriangle size={18}/> Points de Vigilance
-              </h4>
-              <div className="space-y-3">
-                {aiResults.points_vigilance_majeurs?.map((v, i) => (
-                  <div key={i} className="p-4 bg-white rounded-2xl text-[10px] font-bold text-rose-700 shadow-sm border border-rose-100 flex gap-3">
-                    <span className="text-rose-300">#0{i+1}</span>
-                    {v}
-                  </div>
-                ))}
-              </div>
-            </div>
+             {/* MAÎTRISE ET CONSEILS */}
+             <div className="bg-emerald-50 p-8 rounded-[3rem] border border-emerald-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <ShieldCheck className="text-emerald-600" size={24} />
+                  <h4 className="text-[11px] font-black text-emerald-800 uppercase tracking-widest">Points Forts Identifiés</h4>
+                </div>
+                <div className="grid gap-3">
+                  {aiResults.analyses_par_garantie?.filter(an => an.exposition < 5).map((an, i) => (
+                    <div key={i} className="flex items-center justify-between bg-white/60 p-4 rounded-2xl border border-emerald-200/50">
+                      <span className="text-[11px] font-black text-emerald-900">{an.garantie}</span>
+                      <div className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase">Risque Faible</div>
+                    </div>
+                  ))}
+                  {aiResults.analyses_par_garantie?.filter(an => an.exposition < 5).length === 0 && (
+                    <p className="text-[10px] text-emerald-600 italic">Aucun point fort critique identifié. Focus nécessaire sur la prévention.</p>
+                  )}
+                </div>
+             </div>
           </div>
 
-          {/* PRIORITÉ STRATÉGIQUE */}
-          <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-            <div className="absolute right-[-20px] top-[-20px] w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl" />
-            <h4 className="text-[10px] font-black text-indigo-400 uppercase mb-6 flex items-center gap-2 tracking-[0.2em]">
-              <Target size={20}/> Plan de Maîtrise Prioritaire
-            </h4>
-            <div className="space-y-6">
-              {Object.entries(aiResults.plan_actions).slice(0, 1).map(([key, val]) => (
-                <div key={key}>
-                  <p className="text-xl font-black text-white mb-2">{key}</p>
-                  <p className="text-slate-400 text-sm leading-relaxed font-medium">{val}</p>
+          {/* ACTIONS PRIORITAIRES (LAYOUT TYPE TIMELINE) */}
+          <div className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+              <h4 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                <Target size={20}/> Matrice d'actions prioritaires
+              </h4>
+              <div className="px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-[10px] font-bold text-indigo-300">
+                Estimation Impact Risque : Élevé
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {Object.entries(aiResults.plan_actions).map(([key, val], idx) => (
+                <div key={key} className="relative group">
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="text-3xl font-black text-indigo-600 opacity-30 group-hover:opacity-100 transition-opacity">0{idx + 1}</span>
+                    <div className="h-[2px] flex-1 bg-slate-800" />
+                  </div>
+                  <h5 className="font-black text-xs uppercase mb-2 text-white group-hover:text-indigo-400 transition-colors">{key}</h5>
+                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-4">{val}</p>
+                  <ArrowUpRight className="absolute top-0 right-0 text-slate-700 group-hover:text-indigo-500 transition-colors" size={16} />
                 </div>
               ))}
             </div>
