@@ -8,10 +8,10 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
 
   // Calcul score global terrain
   const scoredQ = Object.values(responses).filter(r => r.isScored);
-  const score = scoredQ.length ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) : 0;
+  const terrainScore = scoredQ.length ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) : 0;
 
-  // --- PAGE 1 : DASHBOARD DE SYNTHÈSE ---
-  // Bandeau Header
+  // --- PAGE 1 : DASHBOARD EXÉCUTIF ---
+  // Bandeau Header Premium
   doc.setFillColor(15, 23, 42); // Slate 900
   doc.rect(0, 0, 210, 65, 'F');
 
@@ -22,52 +22,64 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   }
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20);
+  doc.setFontSize(22);
   doc.setFont(undefined, 'bold');
-  doc.text("RAPPORT D'EXPERTISE RISQUES", 15, 25);
+  doc.text("RAPPORT D'EXPERTISE TECHNIQUE", 15, 25);
   
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(200, 200, 200);
-  doc.text(`AUDITEUR : ${auditorInfo?.name || 'Non spécifié'}`, 15, 35);
-  doc.text(`CABINET : ${auditorInfo?.company || 'Non spécifié'}`, 15, 40);
-  doc.text(`NATURE D'ACTIVITÉ : ${responses['activite_nature']?.value || 'Non spécifiée'}`, 15, 45);
-  doc.text(`DATE DU RAPPORT : ${date}`, 15, 50);
-
-  // Score Global sous forme de badge
-  doc.setFillColor(79, 70, 229); // Indigo 600
-  doc.roundedRect(15, 75, 180, 25, 3, 3, 'F');
-  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
-  doc.text("SCORE D'ASSURABILITÉ GLOBAL (TERRAIN)", 25, 85);
-  doc.setFontSize(16);
-  doc.text(`${score}%`, 25, 92);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(148, 163, 184); // Slate 400
+  doc.text(`RÉFÉRENCE : ${auditorInfo?.company?.toUpperCase() || 'RISK'}-${new Date().getFullYear()}-001`, 15, 32);
 
-  // Tableau d'exposition IA (Remplace les graphiques)
-  let yPos = 115;
-  if (aiResults?.analyses) {
+  doc.setTextColor(255, 255, 255);
+  doc.text(`EXPERT : ${auditorInfo?.name || 'Non spécifié'}`, 15, 42);
+  doc.text(`ACTIVITÉ : ${responses['activite_nature']?.value || 'Non spécifiée'}`, 15, 47);
+  doc.text(`LOCALISATION : ${responses['adress']?.value || 'Algérie'}`, 15, 52);
+  doc.text(`DATE D'INSPECTION : ${date}`, 15, 57);
+
+  // SECTION SCORES (Double Badge)
+  // Score Terrain
+  doc.setFillColor(241, 245, 249);
+  doc.roundedRect(15, 75, 85, 30, 3, 3, 'F');
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(8);
+  doc.text("CONFORMITÉ TERRAIN", 20, 85);
+  doc.setFontSize(16);
+  doc.text(`${terrainScore}%`, 20, 95);
+
+  // Score Qualité IA
+  doc.setFillColor(79, 70, 229);
+  doc.roundedRect(110, 75, 85, 30, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.text("QUALITÉ RISQUE (IA)", 115, 85);
+  doc.setFontSize(16);
+  doc.text(`${aiResults?.score_global || '--'}%`, 115, 95);
+
+  // MATRICE D'EXPOSITION IA
+  let yPos = 125;
+  if (aiResults?.analyses_par_garantie) {
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
-    doc.text("MATRICE D'EXPOSITION PAR GARANTIE", 15, 110);
+    doc.text("ÉVALUATION TECHNIQUE PAR GARANTIE", 15, 120);
 
-    const exposureRows = aiResults.analyses.map(an => [
+    const exposureRows = aiResults.analyses_par_garantie.map(an => [
       an.garantie, 
       `${an.exposition}/10`, 
-      `${an.confidence}%`,
-      an.exposition > 6 ? "CRITIQUE" : "MAITRISÉ"
+      an.exposition > 7 ? "ÉLEVÉE" : (an.exposition > 4 ? "MODÉRÉE" : "FAIBLE")
     ]);
 
     doc.autoTable({
-      startY: 115,
-      head: [['Garantie', 'Exposition', 'Fiabilité IA', 'Statut']],
+      startY: 125,
+      head: [['Garantie Souscrite', 'Indice d\'Exposition', 'Niveau de Risque']],
       body: exposureRows,
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
       styles: { fontSize: 8 },
       didParseCell: function(data) {
-        if (data.column.index === 3 && data.cell.text[0] === 'CRITIQUE') {
-          data.cell.styles.textColor = [239, 68, 68];
+        if (data.column.index === 2 && data.cell.text[0] === 'ÉLEVÉE') {
+          data.cell.styles.textColor = [220, 38, 38];
           data.cell.styles.fontStyle = 'bold';
         }
       }
@@ -75,79 +87,135 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
     yPos = doc.lastAutoTable.finalY + 15;
   }
 
-  // Top Recommandation sur page 1
-  if (aiResults?.recommandation_maitresse) {
-    doc.setFillColor(241, 245, 249);
-    doc.roundedRect(15, yPos, 180, 20, 2, 2, 'F');
+  // SYNTHÈSE EXÉCUTIVE SUR PAGE 1
+  if (aiResults?.synthese_executive) {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(15, yPos, 180, 35, 2, 2, 'FD');
     doc.setTextColor(79, 70, 229);
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'bold');
-    doc.text("PRIORITÉ N°1 :", 20, yPos + 8);
-    doc.setTextColor(15, 23, 42);
     doc.setFontSize(9);
-    const splitRec = doc.splitTextToSize(aiResults.recommandation_maitresse, 165);
-    doc.text(splitRec, 20, yPos + 14);
+    doc.setFont(undefined, 'bold');
+    doc.text("AVIS DE L'EXPERT CONSEIL :", 22, yPos + 10);
+    doc.setTextColor(51, 65, 85);
+    doc.setFont(undefined, 'italic');
+    doc.setFontSize(9);
+    const splitSynth = doc.splitTextToSize(aiResults.synthese_executive, 165);
+    doc.text(splitSynth, 22, yPos + 18);
   }
 
-  // --- PAGE 2 : ANALYSE DÉTAILLÉE IA ---
+  // --- PAGE 2 : ANALYSE DES ALÉAS ET RISQUES MAJEURS ---
   doc.addPage();
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(16);
-  doc.text("SYNTHÈSE DE L'INGÉNIEUR CONSEIL", 15, 20);
-  doc.setDrawColor(79, 70, 229);
-  doc.line(15, 23, 80, 23);
+  doc.setFont(undefined, 'bold');
+  doc.text("1. ANALYSE DES RISQUES NATURELS (NAT-CAT)", 15, 25);
+  doc.setDrawColor(6, 182, 212); // Cyan
+  doc.line(15, 28, 100, 28);
 
-  // Paragraphe d'introduction
   doc.setFontSize(10);
-  doc.setFont(undefined, 'italic');
-  const intro = doc.splitTextToSize(aiResults?.introduction || aiResults?.synthese || "", 180);
-  doc.text(intro, 15, 35, { lineHeightFactor: 1.4 });
-  
-  let currentY = 35 + (intro.length * 6) + 10;
+  doc.setFont(undefined, 'normal');
+  const catNatText = doc.splitTextToSize(aiResults?.analyse_nat_cat || "Non disponible", 180);
+  doc.text(catNatText, 15, 40, { lineHeightFactor: 1.4 });
 
-  // Analyse par paragraphe pour chaque garantie
-  aiResults?.analyses?.forEach(an => {
-    if (currentY > 260) { doc.addPage(); currentY = 20; }
-    
+  let currentY = 40 + (catNatText.length * 6) + 15;
+
+  doc.setFontSize(16);
+  doc.setFont(undefined, 'bold');
+  doc.text("2. POINTS DE VIGILANCE MAJEURS", 15, currentY);
+  doc.setDrawColor(225, 29, 72); // Rose
+  doc.line(15, currentY + 3, 100, currentY + 3);
+
+  currentY += 15;
+  aiResults?.points_vigilance_majeurs?.forEach((point, i) => {
+    doc.setFillColor(255, 241, 242);
+    doc.roundedRect(15, currentY - 5, 180, 10, 1, 1, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(159, 18, 57);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(79, 70, 229);
-    doc.text(`Analyse Focus : ${an.garantie}`, 15, currentY);
-    
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(40, 40, 40);
-    const avis = doc.splitTextToSize(an.avis, 175);
-    doc.text(avis, 15, currentY + 6, { lineHeightFactor: 1.3 });
-    
-    currentY += (avis.length * 6) + 12;
+    doc.text(`${i + 1}. ${point}`, 20, currentY + 1);
+    currentY += 13;
   });
 
-  // --- PAGE 3 : RECUEIL TECHNIQUE ---
+  // --- PAGE 3 : ANALYSE DÉTAILLÉE PAR GARANTIE ---
+  doc.addPage();
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(16);
+  doc.text("3. EXPERTISE TECHNIQUE PAR BRANCHE", 15, 25);
+  
+  let gY = 40;
+  aiResults?.analyses_par_garantie?.forEach(an => {
+    if (gY > 240) { doc.addPage(); gY = 25; }
+    
+    // Titre Branche
+    doc.setFillColor(15, 23, 42);
+    doc.rect(15, gY, 180, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.text(an.garantie.toUpperCase(), 20, gY + 5.5);
+    
+    // Avis Technique
+    doc.setTextColor(51, 65, 85);
+    doc.setFont(undefined, 'bold');
+    doc.text("Analyse du risque :", 15, gY + 15);
+    doc.setFont(undefined, 'normal');
+    const avisSplit = doc.splitTextToSize(an.avis_technique, 175);
+    doc.text(avisSplit, 15, gY + 20);
+    
+    gY += (avisSplit.length * 5) + 25;
+
+    // Préconisation Standard
+    doc.setFillColor(245, 243, 255); // Indigo 50
+    const standardSplit = doc.splitTextToSize(`NORME & STANDARD : ${an.recommandations_standards}`, 170);
+    doc.roundedRect(15, gY - 5, 180, (standardSplit.length * 5) + 5, 2, 2, 'F');
+    doc.setTextColor(67, 56, 202);
+    doc.setFontSize(8.5);
+    doc.text(standardSplit, 20, gY);
+
+    gY += (standardSplit.length * 5) + 20;
+  });
+
+  // --- PAGE PLAN D'ACTIONS ---
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text("4. PLAN DE MAÎTRISE DES RISQUES (PMR)", 15, 25);
+
+  const actionRows = Object.entries(aiResults?.plan_actions || {}).map(([priorite, action]) => [priorite, action]);
+  doc.autoTable({
+    startY: 35,
+    head: [['Priorité', 'Action Recommandée']],
+    body: actionRows,
+    theme: 'striped',
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 9, cellPadding: 5 }
+  });
+
+  // --- RELEVÉS TERRAIN ---
   doc.addPage();
   doc.setFontSize(14);
-  doc.setTextColor(15, 23, 42);
-  doc.text("RELEVÉS DÉTAILLÉS DE L'INSPECTION", 15, 20);
+  doc.text("ANNEXE : RELEVÉS DÉTAILLÉS DE L'INSPECTION", 15, 25);
   
-  const tableRows = [];
+  const terrainRows = [];
   questionsConfig.forEach(s => {
-    tableRows.push([{ content: s.title.toUpperCase(), colSpan: 3, styles: { fillColor: [248, 250, 252], fontStyle: 'bold' } }]);
+    terrainRows.push([{ content: s.title.toUpperCase(), colSpan: 3, styles: { fillColor: [241, 245, 249], fontStyle: 'bold' } }]);
     s.questions.forEach(q => {
       const r = responses[q.id];
       if (r) {
-        tableRows.push([q.label, r.value || r.score + '/5', r.comment || '-']);
+        terrainRows.push([q.label, r.value || r.score + '/5', r.comment || '-']);
       }
     });
   });
 
   doc.autoTable({
-    startY: 30,
-    head: [['Point de contrôle', 'Réponse', 'Commentaires']],
-    body: tableRows,
+    startY: 35,
+    head: [['Point de contrôle', 'Réponse', 'Observations Expert']],
+    body: terrainRows,
     theme: 'grid',
     styles: { fontSize: 8 },
     headStyles: { fillColor: [15, 23, 42] }
   });
 
-  // --- PAGE 4+ : GALERIE PHOTOS (2 colonnes x 3 lignes = 6 par page) ---
+  // --- GALERIE PHOTOS ---
   const allPhotos = [];
   Object.keys(responses).forEach(id => {
     const q = questionsConfig.flatMap(s => s.questions).find(qu => qu.id === id);
@@ -159,37 +227,34 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   if (allPhotos.length > 0) {
     doc.addPage();
     doc.setFontSize(14);
-    doc.text("ANNEXES PHOTOGRAPHIQUES", 15, 20);
+    doc.text("ANNEXE : DOCUMENTATION PHOTOGRAPHIQUE", 15, 20);
 
     let pX = 15;
-    let pY = 30;
+    let pY = 35;
     const imgW = 85;
     const imgH = 60;
 
     allPhotos.forEach((photo, index) => {
-      // Si on dépasse 6 photos, nouvelle page
-      if (index > 0 && index % 6 === 0) {
-        doc.addPage();
-        pY = 20;
-      }
+      if (index > 0 && index % 6 === 0) { doc.addPage(); pY = 20; }
 
       try {
         doc.addImage(photo.url, 'JPEG', pX, pY, imgW, imgH);
         doc.setFontSize(7);
         doc.setTextColor(100);
         doc.text(doc.splitTextToSize(photo.label, imgW), pX, pY + imgH + 4);
-        doc.text(`GPS: ${photo.coords.lat.toFixed(4)}, ${photo.coords.lng.toFixed(4)}`, pX, pY + imgH + 8);
+        if (photo.coords) {
+          doc.text(`GPS: ${photo.coords.lat?.toFixed(4)}, ${photo.coords.lng?.toFixed(4)}`, pX, pY + imgH + 8);
+        }
       } catch (e) { console.error(e); }
 
-      // Logique de grille 2x3
       if ((index + 1) % 2 === 0) {
         pX = 15;
-        pY += imgH + 25; // Espace pour l'image + texte + marge
+        pY += imgH + 25;
       } else {
         pX = 110;
       }
     });
   }
 
-  doc.save(`Expertise_Risque_${auditorInfo?.company || 'Risk'}_${date.replace(/\//g, '-')}.pdf`);
+  doc.save(`RAPPORT_EXPERTISE_${auditorInfo?.company || 'RISK'}_${date.replace(/\//g, '-')}.pdf`);
 };
