@@ -9,7 +9,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCcw
 } from 'lucide-react';
 
 const InspectionForm = () => {
@@ -20,11 +21,11 @@ const InspectionForm = () => {
     addSection, 
     addQuestion,
     addPhoto, 
-    removePhoto 
+    removePhoto,
+    resetAudit // Récupération de l'action de reset
   } = useInspectionStore();
 
-  // État pour gérer quelles sections sont ouvertes
-  const [openSections, setOpenSections] = useState({});
+  const [openSections, setOpenSections] = useState({ 0: true }); // Première section ouverte par défaut
 
   if (!questionsConfig || questionsConfig.length === 0) {
     return (
@@ -36,29 +37,31 @@ const InspectionForm = () => {
   }
 
   const toggleSection = (idx) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [idx]: !prev[idx]
-    }));
+    setOpenSections(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  const handleScoreChange = (qId, score, label, isScored) => {
-    const current = responses[qId] || {};
+  // --- MODIFICATION : SÉCURISATION DE LA PERSISTANCE ---
+  const handleScoreChange = (qId, score, label) => {
     setResponse(qId, {
-      ...current,
-      value: current.value || label,
+      value: responses[qId]?.value || label, // Garde la valeur existante ou met le label
       score: score,
       label: label,
-      isScored: isScored
+      isScored: true
+    });
+  };
+
+  const handleTextChange = (qId, val, label) => {
+    setResponse(qId, { 
+      value: val, 
+      label: label, 
+      isScored: false 
     });
   };
 
   const handleCommentChange = (qId, comment) => {
-    const current = responses[qId] || {};
-    setResponse(qId, { ...current, comment });
+    setResponse(qId, { comment });
   };
 
-  // Calculer si une section est "complétée" (toutes les questions notées ont une réponse)
   const isSectionComplete = (questions) => {
     const scoredQuestions = questions.filter(q => q.isScored);
     if (scoredQuestions.length === 0) return false;
@@ -67,13 +70,23 @@ const InspectionForm = () => {
 
   return (
     <div className="space-y-4 pb-40 animate-in fade-in duration-500">
+      
+      {/* BOUTON RESET RAPIDE */}
+      <div className="flex justify-end px-2">
+        <button 
+          onClick={() => confirm("Voulez-vous vider tout le formulaire ?") && resetAudit()}
+          className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-400 hover:text-red-500 transition-colors"
+        >
+          <RefreshCcw size={12} /> Réinitialiser le formulaire
+        </button>
+      </div>
+
       {questionsConfig.map((section, sIdx) => {
         const isOpen = openSections[sIdx];
         const complete = isSectionComplete(section.questions);
 
         return (
-          <div key={sIdx} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            {/* EN-TÊTE DE SECTION (ACCORDÉON) */}
+          <div key={sIdx} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all">
             <button 
               onClick={() => toggleSection(sIdx)}
               className={`w-full flex items-center justify-between p-6 transition-all ${isOpen ? 'bg-slate-50' : 'bg-white'}`}
@@ -89,13 +102,12 @@ const InspectionForm = () => {
               {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
             </button>
 
-            {/* CONTENU DE SECTION (SI OUVERT) */}
             {isOpen && (
               <div className="p-6 pt-0 space-y-8 animate-in slide-in-from-top-2 duration-300">
                 <div className="h-px bg-slate-100 w-full mb-6" />
                 
                 {section.questions.map((q) => (
-                  <div key={q.id} className="space-y-4 relative group border-b border-slate-50 pb-8 last:border-0">
+                  <div key={q.id} className="space-y-4 border-b border-slate-50 pb-8 last:border-0">
                     <label className="block text-sm font-bold text-slate-800 leading-tight">
                       {q.label}
                     </label>
@@ -105,7 +117,7 @@ const InspectionForm = () => {
                         {[1, 2, 3, 4, 5].map((num) => (
                           <button
                             key={num}
-                            onClick={() => handleScoreChange(q.id, num, q.label, true)}
+                            onClick={() => handleScoreChange(q.id, num, q.label)}
                             className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${
                               responses[q.id]?.score === num
                                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
@@ -121,7 +133,7 @@ const InspectionForm = () => {
                         type="text"
                         placeholder="Réponse libre..."
                         value={responses[q.id]?.value || ''}
-                        onChange={(e) => setResponse(q.id, { value: e.target.value, isScored: false, label: q.label })}
+                        onChange={(e) => handleTextChange(q.id, e.target.value, q.label)}
                         className="w-full bg-slate-50 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
                       />
                     )}
@@ -147,11 +159,7 @@ const InspectionForm = () => {
                         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                           {responses[q.id].photos.map((p, idx) => (
                             <div key={idx} className="relative flex-shrink-0">
-                              <img 
-                                src={p.url} 
-                                alt="Preuve technique" 
-                                className="w-20 h-20 object-cover rounded-xl border border-slate-100 shadow-sm"
-                              />
+                              <img src={p.url} alt="Preuve" className="w-20 h-20 object-cover rounded-xl border border-slate-100" />
                               <button
                                 onClick={() => removePhoto(q.id, idx)}
                                 className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md"
@@ -166,7 +174,6 @@ const InspectionForm = () => {
                   </div>
                 ))}
 
-                {/* BOUTON AJOUTER QUESTION DANS CETTE SECTION */}
                 <button 
                   onClick={() => {
                     const label = prompt("Libellé de la question :");
@@ -182,7 +189,6 @@ const InspectionForm = () => {
         );
       })}
 
-      {/* BOUTON AJOUTER SECTION TOUT EN BAS */}
       <button 
         onClick={() => {
           const title = prompt("Nom de la section :");
