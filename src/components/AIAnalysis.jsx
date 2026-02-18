@@ -13,14 +13,14 @@ const AIAnalysis = () => {
   const [selectedGaranties, setSelectedGaranties] = useState(['Incendie', 'PE']);
 
   const garantiesLib = [
-    { id: 'Incendie', label: 'Incendie & Explosion', icon: <Flame size={16} />, color: 'text-orange-500' },
-    { id: 'DDE', label: 'Dégâts des Eaux', icon: <Droplets size={16} />, color: 'text-blue-500' },
-    { id: 'TT', label: 'Tremblement de terre', icon: <MountainSnow size={16} />, color: 'text-emerald-500' },
-    { id: 'ino', label: 'Inondations', icon: <Waves size={16} />, color: 'text-slate-500' },
-    { id: 'TPT', label: 'Tempêtes', icon: <Wind size={16} />, color: 'text-cyan-500' },
+    { id: 'Incendie_explosion', label: 'Incendie & Explosion', icon: <Flame size={16} />, color: 'text-orange-500' },
+    { id: 'Degat_Des_Eaux', label: 'Dégâts des Eaux', icon: <Droplets size={16} />, color: 'text-blue-500' },
+    { id: 'Tremblement_de_Terre', label: 'Tremblement de terre', icon: <MountainSnow size={16} />, color: 'text-emerald-500' },
+    { id: 'inondation', label: 'Inondations', icon: <Waves size={16} />, color: 'text-slate-500' },
+    { id: 'Tempetes', label: 'Tempêtes', icon: <Wind size={16} />, color: 'text-cyan-500' },
     { id: 'Vol', label: 'Vol & Vandalisme', icon: <Lock size={16} />, color: 'text-slate-600' },
-    { id: 'BDM', label: 'Bris de Machines', icon: <Settings2 size={16} />, color: 'text-blue-900' },
-    { id: 'PE', label: 'Pertes d’Exploitation', icon: <Activity size={16} />, color: 'text-emerald-500' },
+    { id: 'Bris_De_Machine', label: 'Bris de Machines', icon: <Settings2 size={16} />, color: 'text-blue-900' },
+    { id: 'Perte_Exploitation', label: 'Pertes d’Exploitation', icon: <Activity size={16} />, color: 'text-emerald-500' },
     { id: 'RC', label: 'Resp. Civile', icon: <Users size={16} />, color: 'text-purple-500' },
   ];
 
