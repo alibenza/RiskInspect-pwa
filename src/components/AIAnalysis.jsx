@@ -59,7 +59,7 @@ const AIAnalysis = () => {
       }).join('\n\n');
 
       const promptStrict = `
-        En tant qu'Ingénieur Souscripteur Senior, analyse le risque suivant :
+        En Algérie, dans le cadre de l'assurance, En tant qu'Ingénieur Souscripteur Senior, analyse le risque suivant, tout en tenant compte des données de terrain, et les garanties choisies :
         ACTIVITÉ : "${natureActivite}"
         GARANTIES CIBLÉES : ${selectedGaranties.join(', ')}
         DONNÉES TERRAIN : ${dataSummary}
