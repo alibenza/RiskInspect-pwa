@@ -121,8 +121,8 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   const catNatText = doc.splitTextToSize(aiResults?.analyse_nat_cat || "Non disponible", 180);
   doc.text(catNatText, 15, 38, { lineHeightFactor: 1.4 });
 
-  // --- PAGE 3 : DÉTAIL PAR BRANCHE ---
-  doc.addPage();
+  //  DÉTAIL PAR BRANCHE ---
+ 
   doc.setFontSize(14); doc.setTextColor(15, 23, 42);
   doc.text("3. ANALYSE TECHNIQUE DÉTAILLÉE", 15, 25);
   
