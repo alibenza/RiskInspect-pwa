@@ -50,7 +50,7 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   doc.setFontSize(7.5);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text("CLAUSE DE NON-RESPONSABILITÉ :", 20, 75);
+  doc.text(" PRÉAMBULE ", 20, 75);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(71, 85, 105);
   doc.text(splitDisclaimer, 20, 80);
