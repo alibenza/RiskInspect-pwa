@@ -37,9 +37,9 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
 
   // --- SECTION DISCLAIMER (AJOUTÉE) ---
   const auditorName = auditorInfo?.name || "l'expert désigné";
-  const clientName = responses['raison_sociale']?.value || responses['activite_nature']?.value || "du site client";
-  
-  const disclaimerText = `Le présent document est rédigé à la suite de la visite de risque effectuée par ${auditorName} au site de "${clientName}". L'analyse est effectuée par un agent IA sur la base des informations collectées ; les synthèses et modélisations peuvent comporter des imprécisions ou être incorrectes.`;
+  const clientName = responses['nomination']?.value || responses['activite_nature']?.value || "du site client";
+  const Adress = responses['adress']?.value 
+  const disclaimerText = `Le présent document est rédigé à la suite de la visite de risque effectuée par ${auditorName} au site de "${clientName}" sis à "${Adress}". L'analyse est effectuée par un agent IA sur la base des informations collectées ; les synthèses et modélisations peuvent comporter des imprécisions ou être incorrectes.`;
 
   doc.setFillColor(248, 250, 252); // Fond gris très clair
   doc.setDrawColor(226, 232, 240); // Bordure discrète
