@@ -121,7 +121,16 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   const catNatText = doc.splitTextToSize(aiResults?.analyse_nat_cat || "Non disponible", 180);
   doc.text(catNatText, 15, 38, { lineHeightFactor: 1.4 });
 
-  //  DÉTAIL PAR BRANCHE ---
+  // Calcul de la position après le texte NAT-CAT
+  // (Nb de lignes * hauteur de ligne) + marge
+  let currentY = 38 + (catNatText.length * 5.5) + 20;
+
+  // Section 3: ANALYSE TECHNIQUE DÉTAILLÉE
+  // Vérification de l'espace restant sur la page (bas de page à ~280)
+  if (currentY > 230) {
+    doc.addPage();
+    currentY = 25;
+  }
  
   doc.setFontSize(14); doc.setTextColor(15, 23, 42);
   doc.text("3. ANALYSE TECHNIQUE DÉTAILLÉE", 15, 25);
