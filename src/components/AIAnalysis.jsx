@@ -4,13 +4,18 @@ import {
   BrainCircuit, Loader2, ShieldCheck, Flame, Droplets, Lock, 
   Users, Activity, AlertTriangle, Globe2, MountainSnow, 
   Waves, Wind, Settings2, MapPin, BarChart4, ClipboardList,
-  PlusCircle, Lightbulb, Target
+  PlusCircle, Lightbulb, Target, ChevronDown, Check, SlidersHorizontal
 } from 'lucide-react';
 
 const AIAnalysis = () => {
   const { responses, questionsConfig, aiResults, setAiResults } = useInspectionStore();
   const [loading, setLoading] = useState(false);
+  
+  // Nouveaux States
   const [selectedGaranties, setSelectedGaranties] = useState(['Incendie_explosion', 'Bris_De_Machine', 'RC']);
+  const [expertOpinion, setExpertOpinion] = useState(50);
+  const [analysisSeverity, setAnalysisSeverity] = useState('Moyen');
+  const [isGarantiesOpen, setIsGarantiesOpen] = useState(false); // Gère l'ouverture du menu déroulant
 
   const garantiesLib = [
     { id: 'Incendie_explosion', label: 'Incendie & Explosion', icon: <Flame size={16} />, color: 'text-orange-500' },
@@ -23,6 +28,15 @@ const AIAnalysis = () => {
     { id: 'Perte_Exploitation', label: 'Pertes d’Exploitation', icon: <Activity size={16} />, color: 'text-emerald-500' },
     { id: 'RC', label: 'Resp. Civile', icon: <Users size={16} />, color: 'text-purple-500' },
   ];
+
+  // Gestion du "Tout Sélectionner"
+  const handleSelectAll = () => {
+    if (selectedGaranties.length === garantiesLib.length) {
+      setSelectedGaranties([]);
+    } else {
+      setSelectedGaranties(garantiesLib.map(g => g.id));
+    }
+  };
 
   const runDetailedAnalysis = async () => {
     if (selectedGaranties.length === 0) return alert("Sélectionnez au moins une garantie.");
@@ -48,9 +62,18 @@ const AIAnalysis = () => {
         return `### Section: ${section.title}\n${sectionResponses}`;
       }).join('\n\n');
 
+      // Traduction des paramètres experts pour l'IA
+      const expertOpinionText = expertOpinion < 40 ? 'Insatisfaisant (Cherche les failles majeures)' : expertOpinion < 70 ? 'Satisfait avec réserve (Points d\'amélioration attendus)' : 'Satisfait (Validation des acquis)';
+      const severityInstruction = analysisSeverity === 'Léger' ? 'Sois indulgent sur les écarts mineurs, privilégie une approche pragmatique.' : analysisSeverity === 'Sévère' ? 'Tolérance ZÉRO. Applique strictement les normes (APSAD, NF, etc.). Sois intransigeant.' : 'Garde un équilibre entre rigueur normative et réalité terrain.';
+
       const promptStrict = `
         Tu es un Ingénieur Souscripteur Senior spécialisé dans le marché de l'assurance IARD en Algérie.
         Ton objectif est de fournir une analyse de risque prédictive et ultra-technique.
+
+        PARAMÈTRES DE L'EXPERT TERRAIN (IMPORTANT) :
+        - AVIS PRÉLIMINAIRE DE L'EXPERT : ${expertOpinion}/100 -> ${expertOpinionText}
+        - NIVEAU DE RIGUEUR ATTENDU : ${analysisSeverity} -> ${severityInstruction}
+        Ajuste ton score_global et la sévérité de tes recommandations en fonction de ces deux paramètres.
 
         CONTEXTE DU SITE :
         - Nature de l'activité : "${natureActivite}"
@@ -59,7 +82,7 @@ const AIAnalysis = () => {
 
         TES MISSIONS D'EXPERT :
         1. ANALYSE PROFONDE : Pour chaque garantie sélectionnée (${nomsGarantiesCochees}), évalue le risque en croisant l'activité et les observations terrain.
-        2. VIGILANCE GÉOGRAPHIQUE : Intègre les spécificités locales algériennes (zones sismiques du nord, risques inondation oueds, exposition sirocco/tempêtes).
+        2. VIGILANCE GÉOGRAPHIQUE : Intègre les spécificités locales algériennes.
         3. DÉTECTION DE LACUNES : Identifie les garanties indispensables pour un(e) "${natureActivite}" que je n'ai PAS sélectionnées.
 
         FORMAT DE RÉPONSE JSON (STRICT ET VALIDE) :
@@ -87,11 +110,11 @@ const AIAnalysis = () => {
         body: JSON.stringify({
           model: "mistral-small-latest",
           messages: [
-            { role: "system", content: "Tu es un moteur d'expertise assurantielle. Tu ne parles qu'en JSON technique. Ta précision sauve des actifs." }, 
+            { role: "system", content: "Tu es un moteur d'expertise assurantielle. Tu ne parles qu'en JSON technique strict. Ne génère aucun texte en dehors du bloc JSON." }, 
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.3 // Légère augmentation pour plus de profondeur sans perte de structure
+          temperature: 0.3
         })
       });
 
@@ -100,7 +123,6 @@ const AIAnalysis = () => {
       const jsonString = content.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsedData = JSON.parse(jsonString);
 
-      // Sécurisation et formatage des données numériques
       const secureData = {
         ...parsedData,
         score_global: parseInt(parsedData.score_global) || 0,
@@ -124,7 +146,7 @@ const AIAnalysis = () => {
 
   return (
     <div className="p-4 space-y-6 pb-24 max-w-5xl mx-auto">
-      {/* HEADER AMÉLIORÉ */}
+      {/* HEADER */}
       <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border-b-4 border-indigo-500">
         <div className="absolute top-0 right-0 p-8 opacity-10">
             <BrainCircuit size={120} />
@@ -144,46 +166,136 @@ const AIAnalysis = () => {
       </div>
 
       {!aiResults ? (
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
-          <div className="mb-8">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 mb-1">Configuration de l'Expertise</h3>
-            <p className="text-xs text-slate-400">Sélectionnez les garanties à soumettre à l'analyse prédictive.</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {garantiesLib.map(g => (
-              <button
-                key={g.id}
-                onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])}
-                className={`flex flex-col gap-4 p-5 rounded-[1.5rem] text-[9px] font-black uppercase transition-all border-2 text-left group ${
-                  selectedGaranties.includes(g.id) 
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' 
-                    : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'
-                }`}
-              >
-                <div className={`${selectedGaranties.includes(g.id) ? 'text-white' : g.color} group-hover:scale-110 transition-transform`}>
-                    {g.icon}
+        <div className="space-y-6">
+          
+          {/* NOUVEAU BLOC : PARAMÉTRAGE EXPERT */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl space-y-8">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <SlidersHorizontal className="text-indigo-600" size={20} />
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800">Paramétrage de l'IA</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* CURSEUR DE SATISFACTION */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Avis Préliminaire</label>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                    expertOpinion < 40 ? 'bg-red-100 text-red-700' : 
+                    expertOpinion < 70 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {expertOpinion < 40 ? 'Insatisfaisant' : expertOpinion < 70 ? 'Satisfait avec réserve' : 'Satisfait'}
+                  </span>
                 </div>
-                {g.label}
-              </button>
-            ))}
+                <input 
+                  type="range" 
+                  min="0" max="100" 
+                  value={expertOpinion}
+                  onChange={(e) => setExpertOpinion(e.target.value)}
+                  className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  style={{
+                    background: `linear-gradient(to right, #ef4444, #eab308, #10b981)`
+                  }}
+                />
+              </div>
+
+              {/* NIVEAU DE SÉVÉRITÉ */}
+              <div className="space-y-4">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 block">Sévérité de l'analyse</label>
+                <div className="flex bg-slate-100 p-1 rounded-2xl">
+                  {['Léger', 'Moyen', 'Sévère'].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => setAnalysisSeverity(level)}
+                      className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all ${
+                        analysisSeverity === level 
+                          ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <button 
-            onClick={runDetailedAnalysis} 
-            disabled={loading}
-            className="w-full mt-8 py-6 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:bg-indigo-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-          >
-            {loading ? (
-                <>
-                    <Loader2 className="animate-spin" size={20} /> 
-                    Analyse Technique Mistral-AI...
-                </>
-            ) : "Lancer l'Expertise Souscription"}
-          </button>
+
+          {/* BLOC : SÉLECTION DES GARANTIES (MENU DÉROULANT) */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
+            <div className="mb-6">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 mb-1">Périmètre de l'Expertise</h3>
+              <p className="text-[11px] text-slate-400">Sélectionnez les garanties à soumettre à l'analyse.</p>
+            </div>
+
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button 
+                onClick={() => setIsGarantiesOpen(!isGarantiesOpen)}
+                className="w-full bg-slate-50 p-4 flex justify-between items-center hover:bg-slate-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center font-black text-xs">
+                    {selectedGaranties.length}
+                  </div>
+                  <span className="text-sm font-bold text-slate-700">Garanties sélectionnées</span>
+                </div>
+                <ChevronDown className={`text-slate-400 transition-transform ${isGarantiesOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isGarantiesOpen && (
+                <div className="p-4 bg-white border-t border-slate-200">
+                  <button 
+                    onClick={handleSelectAll}
+                    className="mb-4 text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-2"
+                  >
+                    <Check size={16} /> 
+                    {selectedGaranties.length === garantiesLib.length ? "Tout désélectionner" : "Tout sélectionner"}
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {garantiesLib.map(g => {
+                      const isSelected = selectedGaranties.includes(g.id);
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={() => setSelectedGaranties(prev => isSelected ? prev.filter(x => x !== g.id) : [...prev, g.id])}
+                          className={`flex items-center gap-3 p-3 rounded-xl text-left border transition-all ${
+                            isSelected 
+                              ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' 
+                              : 'border-slate-200 hover:border-indigo-300'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded flex items-center justify-center ${isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-100 ' + g.color}`}>
+                            {isSelected ? <Check size={14} /> : g.icon}
+                          </div>
+                          <span className={`text-xs font-bold ${isSelected ? 'text-indigo-900' : 'text-slate-600'}`}>
+                            {g.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button 
+              onClick={runDetailedAnalysis} 
+              disabled={loading}
+              className="w-full mt-8 py-6 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:bg-indigo-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+            >
+              {loading ? (
+                  <>
+                      <Loader2 className="animate-spin" size={20} /> 
+                      Génération du rapport IA...
+                  </>
+              ) : "Lancer l'Expertise IA"}
+            </button>
+          </div>
+
         </div>
       ) : (
+        /* LE DASHBOARD RESTE INCHANGÉ ICI (Copie ton code existant à partir du Dashboard principal) */
         <div className="space-y-6 animate-in slide-in-from-bottom-10 duration-1000">
-          
-          {/* DASHBOARD PRINCIPAL */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col items-center justify-center border-b-8 border-indigo-500">
               <div className="text-6xl font-black text-white">{aiResults.score_global}%</div>
