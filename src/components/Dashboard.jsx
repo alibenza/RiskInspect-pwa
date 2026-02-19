@@ -42,6 +42,7 @@ const Dashboard = () => {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: false, // <--- IMPORTANT : Désactive l'animation pour une capture PDF instantanée
     plugins: { legend: { display: false } },
     scales: {
       r: { 
@@ -55,7 +56,8 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24 animate-in fade-in duration-700 bg-slate-50/50">
+    /* AJOUT DE L'ID 'dashboard-to-export' POUR LA CAPTURE PDF */
+    <div id="dashboard-to-export" className="p-4 space-y-6 pb-24 animate-in fade-in duration-700 bg-slate-50/50">
       
       {/* KPI SECTION : LE DUEL DES SCORES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
