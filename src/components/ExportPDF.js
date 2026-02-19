@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) => {
+// Ajout du paramètre chartImage à la fin
+export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo, chartImage) => {
   const doc = new jsPDF();
   const date = new Date().toLocaleDateString();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -35,14 +36,14 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   doc.text(`LOCALISATION : ${responses['adress']?.value || 'Algérie'}`, 15, 52);
   doc.text(`DATE D'INSPECTION : ${date}`, 15, 57);
 
-  // --- SECTION DISCLAIMER (AJOUTÉE) ---
+  // --- SECTION DISCLAIMER ---
   const auditorName = auditorInfo?.name || "l'expert désigné";
   const clientName = responses['nomination']?.value || responses['activite_nature']?.value || "du site client";
   const Adress = responses['adress']?.value 
-  const disclaimerText = `Le présent document est rédigé à la suite de la visite de risque effectuée par ${auditorName} au site de "${clientName}" sis à "${Adress}". L'analyse est effectuée par un agent IA sur la base des informations collectées ; les synthèses et modélisations peuvent comporter des imprécisions ou être incorrectes.`;
+  const disclaimerText = `Le présent document est rédigé à la suite de la visite de risque effectuée par ${auditorName} au site de "${clientName}" sis à "${Adress}". L'analyse est effectuée par un agent IA sur la base des informations collectées ; les synthèses et modélisations peuvent comporter des imprécisions.`;
 
-  doc.setFillColor(248, 250, 252); // Fond gris très clair
-  doc.setDrawColor(226, 232, 240); // Bordure discrète
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
   const splitDisclaimer = doc.splitTextToSize(disclaimerText, 180);
   const disclaimerHeight = (splitDisclaimer.length * 5) + 8;
   
@@ -55,7 +56,7 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   doc.setTextColor(71, 85, 105);
   doc.text(splitDisclaimer, 20, 80);
 
-  // --- SECTION SCORES (Décalée vers le bas à cause du disclaimer) ---
+  // --- SECTION SCORES ---
   const scoreY = 70 + disclaimerHeight + 10;
   
   doc.setFillColor(241, 245, 249);
@@ -71,11 +72,13 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   doc.setFontSize(16); doc.text(`${aiResults?.score_global || '--'}%`, 115, scoreY + 20);
 
   // --- TABLEAU D'EXPOSITION ---
+  let nextY = scoreY + 45;
+
   if (aiResults?.analyses_par_garantie) {
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
-    doc.text("ÉVALUATION TECHNIQUE PAR BRANCHE", 15, scoreY + 45);
+    doc.text("ÉVALUATION TECHNIQUE PAR BRANCHE", 15, nextY);
 
     const exposureRows = aiResults.analyses_par_garantie.map(an => [
       an.garantie, 
@@ -84,7 +87,7 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
     ]);
 
     doc.autoTable({
-      startY: scoreY + 50,
+      startY: nextY + 5,
       head: [['Branche', 'Indice d\'Exposition', 'Statut Souscription']],
       body: exposureRows,
       theme: 'grid',
@@ -98,19 +101,47 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
       }
     });
 
-    let synthY = doc.lastAutoTable.finalY + 12;
+    nextY = doc.lastAutoTable.finalY + 15;
+  }
+
+  // --- NOUVELLE SECTION : INSERTION DU GRAPHIQUE ---
+  if (chartImage) {
+    // Si on n'a plus de place sur la page 1, on ajoute le graphe sur la page 2
+    if (nextY > 200) {
+      doc.addPage();
+      nextY = 25;
+    }
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text("CARTOGRAPHIE DU RISQUE (RADAR IA)", 15, nextY);
+    
+    try {
+      // On insère l'image capturée (Radar Chart)
+      doc.addImage(chartImage, 'PNG', 35, nextY + 5, 140, 70); 
+      nextY += 85; 
+    } catch (e) {
+      console.error("Erreur image chart:", e);
+    }
+  }
+
+  // --- SYNTHÈSE EXECUTIVE ---
+  if (aiResults?.synthese_executive) {
+    if (nextY > 240) { doc.addPage(); nextY = 25; }
+    
     const splitSynth = doc.splitTextToSize(aiResults.synthese_executive, 170);
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(79, 70, 229);
-    doc.roundedRect(15, synthY, 180, (splitSynth.length * 5) + 12, 2, 2, 'FD');
+    doc.roundedRect(15, nextY, 180, (splitSynth.length * 5) + 12, 2, 2, 'FD');
     doc.setTextColor(79, 70, 229);
     doc.setFontSize(9); doc.setFont(undefined, 'bold');
-    doc.text("SYNTHÈSE DE L'INGÉNIEUR CONSEIL", 22, synthY + 8);
+    doc.text("SYNTHÈSE DE L'INGÉNIEUR CONSEIL", 22, nextY + 8);
     doc.setTextColor(51, 65, 85); doc.setFont(undefined, 'normal');
-    doc.text(splitSynth, 22, synthY + 15);
+    doc.text(splitSynth, 22, nextY + 15);
   }
 
-  // --- PAGE 2 : ALÉAS & SUGGESTIONS ---
+  // --- PAGE SUIVANTE : ALÉAS ---
   doc.addPage();
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(14); doc.setFont(undefined, 'bold');
@@ -121,12 +152,9 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
   const catNatText = doc.splitTextToSize(aiResults?.analyse_nat_cat || "Non disponible", 180);
   doc.text(catNatText, 15, 38, { lineHeightFactor: 1.4 });
 
-
-    doc.addPage();
-    currentY = 25;
-
- 
-  doc.setFontSize(14); doc.setTextColor(15, 23, 42);
+  // --- ANALYSE TECHNIQUE DÉTAILLÉE ---
+  doc.addPage();
+  doc.setFontSize(14); doc.setFont(undefined, 'bold');
   doc.text("3. ANALYSE TECHNIQUE DÉTAILLÉE", 15, 25);
   
   let gY = 35;
@@ -153,9 +181,9 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
     gY += (standardSplit.length * 5) + 15;
   });
 
-  // --- ANNEXES ---
+  // --- ANNEXES : RELEVÉS ---
   doc.addPage();
-  doc.setFontSize(14);
+  doc.setFontSize(14); doc.setTextColor(15, 23, 42);
   doc.text("ANNEXE : RELEVÉS DÉTAILLÉS DE L'INSPECTION", 15, 25);
   const terrainRows = [];
   questionsConfig.forEach(s => {
@@ -200,7 +228,7 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo) 
     });
   }
 
-  // --- FOOTER & SAUVEGARDE FINALE ---
+  // --- FOOTER & SAUVEGARDE ---
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
