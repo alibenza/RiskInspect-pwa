@@ -1,8 +1,8 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
-// Ajout du paramètre chartImage à la fin
-export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo, chartImage) => {
+export const exportToPdf = async (responses, questionsConfig, aiResults, auditorInfo) => {
   const doc = new jsPDF();
   const date = new Date().toLocaleDateString();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -11,7 +11,7 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo, 
   const scoredQ = Object.values(responses).filter(r => r.isScored);
   const terrainScore = scoredQ.length ? Math.round((scoredQ.reduce((a, b) => a + (Number(b.score) || 0), 0) / (scoredQ.length * 5)) * 100) : 0;
 
-  // --- PAGE 1 : HEADER & DASHBOARD ---
+  // --- PAGE 1 : HEADER ---
   doc.setFillColor(15, 23, 42); // Slate 900
   doc.rect(0, 0, 210, 65, 'F');
 
@@ -104,26 +104,18 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo, 
     nextY = doc.lastAutoTable.finalY + 15;
   }
 
-  // --- NOUVELLE SECTION : INSERTION DU GRAPHIQUE ---
-  if (chartImage) {
-    // Si on n'a plus de place sur la page 1, on ajoute le graphe sur la page 2
-    if (nextY > 200) {
-      doc.addPage();
-      nextY = 25;
-    }
-
+  // --- INSERTION DYNAMIQUE DU GRAPHIQUE RADAR ---
+  const chartElement = document.querySelector('canvas'); // Capture le premier canvas (le radar)
+  if (chartElement) {
+    if (nextY > 200) { doc.addPage(); nextY = 25; }
+    
+    const canvasImg = chartElement.toDataURL('image/png');
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(15, 23, 42);
     doc.text("CARTOGRAPHIE DU RISQUE (RADAR IA)", 15, nextY);
-    
-    try {
-      // On insère l'image capturée (Radar Chart)
-      doc.addImage(chartImage, 'PNG', 35, nextY + 5, 140, 70); 
-      nextY += 85; 
-    } catch (e) {
-      console.error("Erreur image chart:", e);
-    }
+    doc.addImage(canvasImg, 'PNG', 35, nextY + 5, 140, 75);
+    nextY += 90;
   }
 
   // --- SYNTHÈSE EXECUTIVE ---
@@ -139,6 +131,7 @@ export const exportToPdf = (responses, questionsConfig, aiResults, auditorInfo, 
     doc.text("SYNTHÈSE DE L'INGÉNIEUR CONSEIL", 22, nextY + 8);
     doc.setTextColor(51, 65, 85); doc.setFont(undefined, 'normal');
     doc.text(splitSynth, 22, nextY + 15);
+    nextY += (splitSynth.length * 5) + 20;
   }
 
   // --- PAGE SUIVANTE : ALÉAS ---
