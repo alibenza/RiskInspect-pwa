@@ -33,7 +33,7 @@ const AIAnalysis = () => {
     setLoading(true);
 
     try {
-      // 1. Extraction des données avec valeurs par défaut pour éviter les erreurs "undefined"
+      // 1. Préparation des variables
       const nomination = responses['nomination']?.value || "Site Industriel";
       const natureActivite = responses['activite_nature']?.value || "Non spécifiée";
       const siteAddress = responses['adress']?.value || "Algérie";
@@ -43,7 +43,6 @@ const AIAnalysis = () => {
         .map(id => garantiesLib.find(g => g.id === id)?.label)
         .join(", ");
 
-      // Construction du résumé de l'audit
       const dataSummary = questionsConfig.map(section => {
         const sectionResponses = section.questions
           .map(q => {
@@ -55,22 +54,13 @@ const AIAnalysis = () => {
         return `### Section: ${section.title}\n${sectionResponses}`;
       }).join('\n\n');
 
-      const expertOpinionText = expertOpinion < 40 ? 'Insatisfaisant' : expertOpinion < 70 ? 'Satisfait avec réserve' : 'Satisfait';
-      
       const promptStrict = `
-        Tu es un Ingénieur expert en assurance. Analyse le site "${nomination}" (${natureActivite}) situé à ${siteAddress}.
-        Avis terrain de l'inspecteur : ${expertOpinion}/100.
-        Rigueur d'analyse souhaitée : ${analysisSeverity}.
-        
-        Missions :
-        - Analyse de l'exposition pour : ${nomsGarantiesCochees}.
-        - Risques CATNAT spécifiques à l'Algérie (CRAAG/ASAL).
-        - Recommandations prioritaires.
-        
-        DONNÉES BRUTES :
-        ${dataSummary}
+        Tu es un Ingénieur expert en assurance (Algérie). Analyse le site "${nomination}" (${natureActivite}) à ${siteAddress}.
+        Paramètres : Avis Inspecteur ${expertOpinion}/100, Sévérité ${analysisSeverity}.
+        Missions : Analyse profonde pour (${nomsGarantiesCochees}), Focus CATNAT (CRAAG/ASAL).
+        Données d'audit : ${dataSummary}
 
-        RÉPONDRE EXCLUSIVEMENT EN JSON STRICT :
+        Réponds EXCLUSIVEMENT en JSON avec cette structure :
         {
           "score_global": 0,
           "synthese_executive": "",
@@ -87,46 +77,43 @@ const AIAnalysis = () => {
           "suggestions_complementaires": [
             { "nom": "", "justification_technique": "" }
           ],
-          "plan_actions": { "Priorité_Haute": "", "Priorité_Moyenne": "", "Amélioration": "" }
+          "plan_actions": { "Immédiat": "", "Court_Terme": "", "Maintenance": "" }
         }
       `;
 
-      // 2. Appel API DeepSeek
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
+      // 2. Appel API GROQ
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer sk-e0d1892e48ba417c839e7c1666c99e01' 
+          'Authorization': 'Bearer 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' 
         },
         body: JSON.stringify({
-          model: "deepseek-chat",
+          model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: "Tu es un expert en gestion des risques. Tu ne parles qu'en JSON." },
+            { role: "system", content: "Tu es un expert en assurance. Tu réponds uniquement en JSON sans aucun texte explicatif autour." },
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.2
+          temperature: 0.1
         })
       });
 
-      // 3. Gestion des erreurs HTTP
       if (!response.ok) {
-        const errorDetail = await response.json();
-        throw new Error(errorDetail.error?.message || `Erreur serveur (${response.status})`);
+        const err = await response.json();
+        throw new Error(err.error?.message || "Erreur Groq");
       }
 
       const rawData = await response.json();
       const content = rawData.choices[0].message.content;
-
-      // 4. Nettoyage et Parsing du JSON
-      const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
-      const parsedResults = JSON.parse(cleanJson);
       
-      setAiResults(parsedResults);
+      // Nettoyage de sécurité
+      const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
+      setAiResults(JSON.parse(cleanJson));
 
     } catch (error) {
-      console.error("Détails de l'erreur AI:", error);
-      alert(`Échec de la génération : ${error.message}`);
+      console.error("Erreur détaillée:", error);
+      alert(`Erreur : ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -140,20 +127,17 @@ const AIAnalysis = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-indigo-500 rounded-xl shadow-lg animate-pulse"><Target size={24} /></div>
-            <h2 className="text-xl font-black uppercase tracking-tighter italic">RiskPro Intelligence</h2>
+            <h2 className="text-xl font-black uppercase tracking-tighter italic">RiskPro Intelligence (Groq Engine)</h2>
           </div>
           <div className="flex items-center gap-2 px-4 py-1.5 bg-indigo-500/20 rounded-full border border-indigo-400/30 w-fit">
               <Globe2 size={12} className="text-indigo-300" /> 
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100">
-                Analyse Certifiée CRAAG / ASAL
-              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100">Analyse Algérie CRAAG / ASAL</span>
           </div>
         </div>
       </div>
 
       {!aiResults ? (
         <div className="space-y-6">
-          {/* CONFIGURATION PANEL */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl space-y-8">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <SlidersHorizontal className="text-indigo-600" size={20} />
@@ -168,7 +152,7 @@ const AIAnalysis = () => {
                 <input type="range" min="0" max="100" value={expertOpinion} onChange={(e) => setExpertOpinion(e.target.value)} className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
               </div>
               <div className="space-y-4">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 block">Sévérité</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 block">Sévérité d'analyse</label>
                 <div className="flex bg-slate-100 p-1 rounded-2xl">
                   {['Léger', 'Moyen', 'Sévère'].map((level) => (
                     <button key={level} onClick={() => setAnalysisSeverity(level)} className={`flex-1 py-2.5 text-[11px] font-black uppercase rounded-xl transition-all ${analysisSeverity === level ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400'}`}>{level}</button>
@@ -178,27 +162,26 @@ const AIAnalysis = () => {
             </div>
           </div>
 
-          {/* SELECTION GARANTIES */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
             <button onClick={() => setIsGarantiesOpen(!isGarantiesOpen)} className="w-full bg-slate-50 p-4 flex justify-between items-center rounded-2xl">
-              <span className="text-sm font-bold">Périmètre : {selectedGaranties.length} Garanties sélectionnées</span>
+              <span className="text-sm font-bold">Périmètre : {selectedGaranties.length} Garanties</span>
               <ChevronDown className={`transition-transform ${isGarantiesOpen ? 'rotate-180' : ''}`} />
             </button>
             {isGarantiesOpen && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4">
                 {garantiesLib.map(g => (
-                  <button key={g.id} onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])} className={`p-3 rounded-xl border text-xs font-bold transition-all ${selectedGaranties.includes(g.id) ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 text-slate-500'}`}>{g.label}</button>
+                  <button key={g.id} onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])} className={`p-3 rounded-xl border text-xs font-bold transition-all ${selectedGaranties.includes(g.id) ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-100 text-slate-500'}`}>{g.label}</button>
                 ))}
               </div>
             )}
-            <button onClick={runDetailedAnalysis} disabled={loading} className="w-full mt-8 py-6 bg-slate-900 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-colors">
-              {loading ? <Loader2 className="animate-spin" /> : "Générer l'Expertise AI"}
+            <button onClick={runDetailedAnalysis} disabled={loading} className="w-full mt-8 py-6 bg-slate-900 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3">
+              {loading ? <Loader2 className="animate-spin" /> : "Lancer l'Expertise AI"}
             </button>
           </div>
         </div>
       ) : (
-        /* RÉSULTATS DE L'ANALYSE */
-        <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-700">
+        /* AFFICHAGE DES RÉSULTATS (Identique au précédent pour la cohérence UI) */
+        <div className="space-y-6 animate-in slide-in-from-bottom-5">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col items-center justify-center border-b-8 border-indigo-500">
               <div className="text-6xl font-black">{aiResults.score_global}%</div>
@@ -209,14 +192,12 @@ const AIAnalysis = () => {
             </div>
           </div>
 
-          {/* CATNAT PANEL */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5"><MapPin size={80} /></div>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><Globe2 size={20} /></div>
-              <h3 className="font-black text-xs uppercase tracking-widest text-slate-800 italic">Exposition CATNAT & Géorisques</h3>
+              <h3 className="font-black text-xs uppercase text-slate-800">Diagnostic CATNAT Algérie</h3>
             </div>
-            <div className="grid md:grid-cols-3 gap-6 relative z-10">
+            <div className="grid md:grid-cols-3 gap-6">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Sismique (CRAAG)</span>
                 <p className="text-xs font-black text-slate-800">{aiResults.analyse_nat_cat?.exposition_sismique}</p>
@@ -232,40 +213,35 @@ const AIAnalysis = () => {
             </div>
           </div>
 
-          {/* ANALYSES PAR GARANTIE */}
           <div className="grid gap-4">
             {aiResults.analyses_par_garantie?.map((gar, idx) => (
               <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 grid md:grid-cols-3 gap-6 items-center">
                 <div>
                   <h4 className="font-black text-xs uppercase text-slate-900 mb-2">{gar.garantie}</h4>
-                  <div className="flex justify-between text-[10px] mb-1"><span>Niveau de Risque</span><span>{gar.exposition}/10</span></div>
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500" style={{ width: `${gar.exposition * 10}%` }} />
                   </div>
                 </div>
                 <div className="md:col-span-2 text-[11px] leading-relaxed text-slate-600">
-                  <p className="mb-2"><strong className="text-indigo-600 uppercase text-[9px]">Avis Technique :</strong> {gar.avis_technique}</p>
-                  <p className="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong className="text-slate-400 uppercase text-[9px]">Mesures Préventives :</strong> {gar.recommandations_standards}</p>
+                  <p><strong>Expertise :</strong> {gar.avis_technique}</p>
+                  <p className="text-indigo-600 mt-1"><strong>Prévention :</strong> {gar.recommandations_standards}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* PLAN D'ACTION FINAL */}
           <div className="bg-slate-900 p-10 rounded-[3rem] text-white">
-            <h3 className="text-xs font-black uppercase text-indigo-400 mb-6 flex items-center gap-2">
-              <ClipboardList size={16} /> Chronogramme de Mise en Conformité
-            </h3>
+            <h3 className="text-xs font-black uppercase text-indigo-400 mb-6">Plan de Mise en Conformité</h3>
             <div className="space-y-4">
               {aiResults.plan_actions && Object.entries(aiResults.plan_actions).map(([key, val]) => (
-                <div key={key} className="flex gap-4 border-l-2 border-slate-800 pl-6 py-2">
-                  <span className="font-black text-indigo-500 min-w-[120px]">{key.replace('_', ' ')}</span>
+                <div key={key} className="flex gap-4 border-l-2 border-slate-800 pl-6">
+                  <span className="font-black text-indigo-500 min-w-[100px] text-[10px] uppercase">{key}</span>
                   <p className="text-xs text-slate-400">{val}</p>
                 </div>
               ))}
             </div>
-            <button onClick={() => setAiResults(null)} className="w-full mt-10 py-4 bg-white/5 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all text-slate-400">
-              ↻ Recommencer l'analyse
+            <button onClick={() => setAiResults(null)} className="w-full mt-10 py-4 bg-white/5 rounded-2xl text-[9px] font-black uppercase hover:bg-white/10 transition-all">
+              ↻ Nouvelle Expertise
             </button>
           </div>
         </div>
