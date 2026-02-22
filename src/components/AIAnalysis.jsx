@@ -64,7 +64,7 @@ const AIAnalysis = () => {
       const severityInstruction = analysisSeverity === 'Léger' ? 'Approche pragmatique.' : analysisSeverity === 'Sévère' ? 'Tolérance ZÉRO (normes APSAD/NF).' : 'Equilibre normatif.';
 
       const promptStrict = `
-        Tu es un Ingénieur expert qui a effectué une visite de risque au site "${nomination}", se trouvant à "${siteAddress}"  en Algérie.
+        Tu es un Ingénieur expert qui a effectué une visite de risque au site,   en Algérie.
         
         PARAMÈTRES EXPERTS :
         - AVIS TERRAIN : ${expertOpinion}/100 (${expertOpinionText})
