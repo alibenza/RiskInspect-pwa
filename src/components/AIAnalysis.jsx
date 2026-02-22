@@ -110,7 +110,7 @@ const AIAnalysis = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer TA_CLE_DEEPSEEK_ICI' // Remplace ici
+          'Authorization': 'Bearer sk-e0d1892e48ba417c839e7c1666c99e01' // Remplace ici
         },
         body: JSON.stringify({
           model: "deepseek-chat", // Ou "deepseek-reasoner" pour une analyse plus profonde
