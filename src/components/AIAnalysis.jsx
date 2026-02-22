@@ -4,7 +4,7 @@ import {
   BrainCircuit, Loader2, ShieldCheck, Globe2, 
   ChevronDown, Target, SlidersHorizontal 
 } from 'lucide-react';
-import { exportToPdf } from '../utils/ExportPDF';
+import { exportToPdf } from './ExportPDF';
 
 const AIAnalysis = () => {
   const { responses, questionsConfig, aiResults, setAiResults, auditorInfo } = useInspectionStore();
