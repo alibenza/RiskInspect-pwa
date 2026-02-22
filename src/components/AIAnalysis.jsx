@@ -105,26 +105,39 @@ const AIAnalysis = () => {
         }
       `;
 
-      const r = await fetch("https://api.mistral.ai/v1/chat/completions", {
+// --- REMPLACEMENT POUR DEEPSEEK ---
+      const r = await fetch("https://api.deepseek.com/chat/completions", {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer sxU5BJBbBa1NbKMLi5lssQYYBjaFZoPE' 
+          'Authorization': 'Bearer TA_CLE_DEEPSEEK_ICI' // Remplace ici
         },
         body: JSON.stringify({
-          model: "mistral-small-latest",
+          model: "deepseek-chat", // Ou "deepseek-reasoner" pour une analyse plus profonde
           messages: [
-            { role: "system", content: "Moteur d'expertise technique. Réponse en JSON strict uniquement." }, 
+            { role: "system", content: "Tu es un moteur d'expertise en assurance. Tu réponds exclusivement en JSON strict." }, 
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.2
+          temperature: 0.3
         })
       });
 
       const d = await r.json();
-      const secureData = JSON.parse(d.choices[0].message.content);
+
+      if (d.error) {
+          console.error("Erreur DeepSeek:", d.error.message);
+          throw new Error(d.error.message);
+      }
+
+      let content = d.choices[0].message.content;
+      
+      // Nettoyage au cas où DeepSeek ajoute du texte autour du JSON
+      const jsonString = content.replace(/```json/g, "").replace(/```/g, "").trim();
+      const secureData = JSON.parse(jsonString);
+      
       setAiResults(secureData);
+      // --- FIN DU BLOC DEEPSEEK ---
 
     } catch (e) {
       console.error("Erreur Expertise:", e);
