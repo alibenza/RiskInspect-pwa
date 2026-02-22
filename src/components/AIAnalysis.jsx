@@ -64,7 +64,7 @@ const AIAnalysis = () => {
       const severityInstruction = analysisSeverity === 'Léger' ? 'Approche pragmatique.' : analysisSeverity === 'Sévère' ? 'Tolérance ZÉRO (normes APSAD/NF).' : 'Equilibre normatif.';
 
       const promptStrict = `
-        Tu es un Ingénieur Souscripteur Senior Expert en Algérie.
+        Tu es un Ingénieur expert qui a effectué une visite de risque au site "${nomination}", se trouvant à "${siteAddress}"  en Algérie.
         
         PARAMÈTRES EXPERTS :
         - AVIS TERRAIN : ${expertOpinion}/100 (${expertOpinionText})
@@ -82,6 +82,7 @@ const AIAnalysis = () => {
            - ASAL (Inondations/Mouvements de terrain via données spatiales).
            - ThinkHazard (Risques climatiques globaux).
         3. DÉTECTION LACUNES : Garanties manquantes pour ce type d'activité.
+        4. TOP 03 Recommandations : Donner les 03 Recommandations prioritaires
 
         FORMAT JSON STRICT :
         {
