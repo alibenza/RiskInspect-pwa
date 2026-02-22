@@ -1,8 +1,3 @@
-Voici le script intégral mis à jour pour ton composant AIAnalysis.jsx.
-
-J'ai intégré la logique CATNAT (CRAAG, ASAL, ThinkHazard) dans le prompt, structuré le schéma JSON pour qu'il soit plus précis, et ajouté le bloc visuel correspondant dans l'interface de rendu.
-
-JavaScript
 import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 import { 
