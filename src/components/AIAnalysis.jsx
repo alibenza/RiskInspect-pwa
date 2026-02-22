@@ -28,120 +28,105 @@ const AIAnalysis = () => {
     { id: 'RC', label: 'Resp. Civile', icon: <Users size={16} />, color: 'text-purple-500' },
   ];
 
-  const handleSelectAll = () => {
-    if (selectedGaranties.length === garantiesLib.length) {
-      setSelectedGaranties([]);
-    } else {
-      setSelectedGaranties(garantiesLib.map(g => g.id));
-    }
-  };
-
   const runDetailedAnalysis = async () => {
     if (selectedGaranties.length === 0) return alert("Sélectionnez au moins une garantie.");
     setLoading(true);
 
     try {
+      // 1. Extraction des données avec valeurs par défaut pour éviter les erreurs "undefined"
+      const nomination = responses['nomination']?.value || "Site Industriel";
       const natureActivite = responses['activite_nature']?.value || "Non spécifiée";
       const siteAddress = responses['adress']?.value || "Algérie";
-      const gpsCoords = responses['pos']?.value || "N/A";
+      const gpsCoords = responses['pos']?.value || "Non renseignées";
       
       const nomsGarantiesCochees = selectedGaranties
         .map(id => garantiesLib.find(g => g.id === id)?.label)
         .join(", ");
 
+      // Construction du résumé de l'audit
       const dataSummary = questionsConfig.map(section => {
         const sectionResponses = section.questions
           .map(q => {
             const r = responses[q.id];
             if (!r) return null;
-            return `[${q.label}] : ${r.value || r.score + '/5'}. Observation: ${r.comment || 'RAS'}`;
+            return `[${q.label}] : ${r.value || r.score + '/5'}. Obs: ${r.comment || 'RAS'}`;
           })
           .filter(Boolean).join('\n');
         return `### Section: ${section.title}\n${sectionResponses}`;
       }).join('\n\n');
 
       const expertOpinionText = expertOpinion < 40 ? 'Insatisfaisant' : expertOpinion < 70 ? 'Satisfait avec réserve' : 'Satisfait';
-      const severityInstruction = analysisSeverity === 'Léger' ? 'Approche pragmatique.' : analysisSeverity === 'Sévère' ? 'Tolérance ZÉRO (normes APSAD/NF).' : 'Equilibre normatif.';
-
+      
       const promptStrict = `
-        Tu es un Ingénieur expert qui a effectué une visite de risque au site,   en Algérie.
+        Tu es un Ingénieur expert en assurance. Analyse le site "${nomination}" (${natureActivite}) situé à ${siteAddress}.
+        Avis terrain de l'inspecteur : ${expertOpinion}/100.
+        Rigueur d'analyse souhaitée : ${analysisSeverity}.
         
-        PARAMÈTRES EXPERTS :
-        - AVIS TERRAIN : ${expertOpinion}/100 (${expertOpinionText})
-        - RIGUEUR : ${analysisSeverity} (${severityInstruction})
+        Missions :
+        - Analyse de l'exposition pour : ${nomsGarantiesCochees}.
+        - Risques CATNAT spécifiques à l'Algérie (CRAAG/ASAL).
+        - Recommandations prioritaires.
+        
+        DONNÉES BRUTES :
+        ${dataSummary}
 
-        CONTEXTE :
-        - Activité : "${natureActivite}"
-        - Localisation : ${siteAddress} (Coords: ${gpsCoords})
-        - Audit : ${dataSummary}
-
-        MISSIONS :
-        1. ANALYSE PROFONDE : Pour les garanties (${nomsGarantiesCochees}).
-        2. EXPERTISE CATNAT : Evalue l'exposition via les référentiels : 
-           - CRAAG (Sismique Algérie : Zones 0, I, IIa, IIb, III).
-           - ASAL (Inondations/Mouvements de terrain via données spatiales).
-           - ThinkHazard (Risques climatiques globaux).
-        3. DÉTECTION LACUNES : Garanties manquantes pour ce type d'activité.
-        4. TOP 03 Recommandations : Donner les 03 Recommandations prioritaires
-
-        FORMAT JSON STRICT :
+        RÉPONDRE EXCLUSIVEMENT EN JSON STRICT :
         {
-          "score_global": 0-100,
-          "synthese_executive": "Texte court",
+          "score_global": 0,
+          "synthese_executive": "",
           "analyse_nat_cat": {
-            "exposition_sismique": "Niveau selon CRAAG",
-            "exposition_hydrologique": "Risque inondation selon ASAL/ThinkHazard",
-            "synthese_geologique": "Focus sol et géomorphologie",
-            "score_catnat": 1-10
+            "exposition_sismique": "",
+            "exposition_hydrologique": "",
+            "synthese_geologique": "",
+            "score_catnat": 0
           },
-          "points_vigilance_majeurs": ["Point 1", "Point 2"],
+          "points_vigilance_majeurs": [],
           "analyses_par_garantie": [
-            { "garantie": "Nom", "exposition": 1-10, "avis_technique": "Analyse", "recommandations_standards": "Mesures" }
+            { "garantie": "", "exposition": 0, "avis_technique": "", "recommandations_standards": "" }
           ],
           "suggestions_complementaires": [
-            { "nom": "Garantie", "justification_technique": "Pourquoi ?" }
+            { "nom": "", "justification_technique": "" }
           ],
-          "plan_actions": { "P1": "Haute", "P2": "Moyen", "P3": "Amélioration" }
+          "plan_actions": { "Priorité_Haute": "", "Priorité_Moyenne": "", "Amélioration": "" }
         }
       `;
 
-// --- REMPLACEMENT POUR DEEPSEEK ---
-      const r = await fetch("https://api.deepseek.com/chat/completions", {
+      // 2. Appel API DeepSeek
+      const response = await fetch("https://api.deepseek.com/chat/completions", {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer sk-e0d1892e48ba417c839e7c1666c99e01' // Remplace ici
+          'Authorization': 'Bearer sk-e0d1892e48ba417c839e7c1666c99e01' 
         },
         body: JSON.stringify({
-          model: "deepseek-chat", // Ou "deepseek-reasoner" pour une analyse plus profonde
+          model: "deepseek-chat",
           messages: [
-            { role: "system", content: "Tu es un moteur d'expertise en assurance. Tu réponds exclusivement en JSON strict." }, 
+            { role: "system", content: "Tu es un expert en gestion des risques. Tu ne parles qu'en JSON." },
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.3
+          temperature: 0.2
         })
       });
 
-      const d = await r.json();
-
-      if (d.error) {
-          console.error("Erreur DeepSeek:", d.error.message);
-          throw new Error(d.error.message);
+      // 3. Gestion des erreurs HTTP
+      if (!response.ok) {
+        const errorDetail = await response.json();
+        throw new Error(errorDetail.error?.message || `Erreur serveur (${response.status})`);
       }
 
-      let content = d.choices[0].message.content;
-      
-      // Nettoyage au cas où DeepSeek ajoute du texte autour du JSON
-      const jsonString = content.replace(/```json/g, "").replace(/```/g, "").trim();
-      const secureData = JSON.parse(jsonString);
-      
-      setAiResults(secureData);
-      // --- FIN DU BLOC DEEPSEEK ---
+      const rawData = await response.json();
+      const content = rawData.choices[0].message.content;
 
-    } catch (e) {
-      console.error("Erreur Expertise:", e);
-      alert("Erreur de génération. Vérifiez votre connexion ou les données saisies.");
+      // 4. Nettoyage et Parsing du JSON
+      const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsedResults = JSON.parse(cleanJson);
+      
+      setAiResults(parsedResults);
+
+    } catch (error) {
+      console.error("Détails de l'erreur AI:", error);
+      alert(`Échec de la génération : ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -168,6 +153,7 @@ const AIAnalysis = () => {
 
       {!aiResults ? (
         <div className="space-y-6">
+          {/* CONFIGURATION PANEL */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl space-y-8">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <SlidersHorizontal className="text-indigo-600" size={20} />
@@ -192,26 +178,27 @@ const AIAnalysis = () => {
             </div>
           </div>
 
+          {/* SELECTION GARANTIES */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
             <button onClick={() => setIsGarantiesOpen(!isGarantiesOpen)} className="w-full bg-slate-50 p-4 flex justify-between items-center rounded-2xl">
-              <span className="text-sm font-bold">Périmètre : {selectedGaranties.length} Garanties</span>
+              <span className="text-sm font-bold">Périmètre : {selectedGaranties.length} Garanties sélectionnées</span>
               <ChevronDown className={`transition-transform ${isGarantiesOpen ? 'rotate-180' : ''}`} />
             </button>
             {isGarantiesOpen && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4">
                 {garantiesLib.map(g => (
-                  <button key={g.id} onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])} className={`p-3 rounded-xl border text-xs font-bold transition-all ${selectedGaranties.includes(g.id) ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100'}`}>{g.label}</button>
+                  <button key={g.id} onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])} className={`p-3 rounded-xl border text-xs font-bold transition-all ${selectedGaranties.includes(g.id) ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 text-slate-500'}`}>{g.label}</button>
                 ))}
               </div>
             )}
-            <button onClick={runDetailedAnalysis} disabled={loading} className="w-full mt-8 py-6 bg-slate-900 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3">
+            <button onClick={runDetailedAnalysis} disabled={loading} className="w-full mt-8 py-6 bg-slate-900 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-colors">
               {loading ? <Loader2 className="animate-spin" /> : "Générer l'Expertise AI"}
             </button>
           </div>
         </div>
       ) : (
+        /* RÉSULTATS DE L'ANALYSE */
         <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-700">
-          {/* SCORE GLOBAL */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col items-center justify-center border-b-8 border-indigo-500">
               <div className="text-6xl font-black">{aiResults.score_global}%</div>
@@ -222,7 +209,7 @@ const AIAnalysis = () => {
             </div>
           </div>
 
-          {/* NOUVEAU BLOC : ANALYSE CATNAT (CRAAG/ASAL) */}
+          {/* CATNAT PANEL */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-5"><MapPin size={80} /></div>
             <div className="flex items-center gap-3 mb-6">
@@ -243,59 +230,42 @@ const AIAnalysis = () => {
                 <div className="text-2xl font-black">{aiResults.analyse_nat_cat?.score_catnat}/10</div>
               </div>
             </div>
-            <div className="mt-6 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
-              <span className="text-[9px] font-black text-indigo-600 uppercase block mb-1">Diagnostic Géomorphologique</span>
-              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">{aiResults.analyse_nat_cat?.synthese_geologique}</p>
-            </div>
           </div>
 
-          {/* ANALYSES GARANTIES */}
+          {/* ANALYSES PAR GARANTIE */}
           <div className="grid gap-4">
-            {aiResults.analyses_par_garantie.map((gar, idx) => (
+            {aiResults.analyses_par_garantie?.map((gar, idx) => (
               <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 grid md:grid-cols-3 gap-6 items-center">
                 <div>
                   <h4 className="font-black text-xs uppercase text-slate-900 mb-2">{gar.garantie}</h4>
-                  <div className="flex justify-between text-[10px] mb-1"><span>Risque</span><span>{gar.exposition}/10</span></div>
+                  <div className="flex justify-between text-[10px] mb-1"><span>Niveau de Risque</span><span>{gar.exposition}/10</span></div>
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500" style={{ width: `${gar.exposition * 10}%` }} />
                   </div>
                 </div>
                 <div className="md:col-span-2 text-[11px] leading-relaxed text-slate-600">
-                  <p className="mb-2"><strong className="text-indigo-600 uppercase text-[9px]">Avis :</strong> {gar.avis_technique}</p>
-                  <p className="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong className="text-slate-400 uppercase text-[9px]">Prévention :</strong> {gar.recommandations_standards}</p>
+                  <p className="mb-2"><strong className="text-indigo-600 uppercase text-[9px]">Avis Technique :</strong> {gar.avis_technique}</p>
+                  <p className="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong className="text-slate-400 uppercase text-[9px]">Mesures Préventives :</strong> {gar.recommandations_standards}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* SUGGESTIONS */}
-          <div className="grid md:grid-cols-2 gap-4">
-             {aiResults.suggestions_complementaires.map((sug, i) => (
-               <div key={i} className="bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100 flex gap-4">
-                  <Lightbulb className="text-indigo-600 shrink-0" size={20} />
-                  <div>
-                    <h5 className="text-[10px] font-black text-indigo-900 uppercase mb-1">{sug.nom}</h5>
-                    <p className="text-[10px] text-indigo-700 leading-tight">{sug.justification_technique}</p>
-                  </div>
-               </div>
-             ))}
-          </div>
-
-          {/* PLAN ACTIONS */}
+          {/* PLAN D'ACTION FINAL */}
           <div className="bg-slate-900 p-10 rounded-[3rem] text-white">
             <h3 className="text-xs font-black uppercase text-indigo-400 mb-6 flex items-center gap-2">
               <ClipboardList size={16} /> Chronogramme de Mise en Conformité
             </h3>
             <div className="space-y-4">
-              {Object.entries(aiResults.plan_actions).map(([key, val]) => (
+              {aiResults.plan_actions && Object.entries(aiResults.plan_actions).map(([key, val]) => (
                 <div key={key} className="flex gap-4 border-l-2 border-slate-800 pl-6 py-2">
-                  <span className="font-black text-indigo-500">{key}</span>
+                  <span className="font-black text-indigo-500 min-w-[120px]">{key.replace('_', ' ')}</span>
                   <p className="text-xs text-slate-400">{val}</p>
                 </div>
               ))}
             </div>
-            <button onClick={() => setAiResults(null)} className="w-full mt-10 py-4 bg-white/5 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-              ↻ Nouvelle Simulation
+            <button onClick={() => setAiResults(null)} className="w-full mt-10 py-4 bg-white/5 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all text-slate-400">
+              ↻ Recommencer l'analyse
             </button>
           </div>
         </div>
