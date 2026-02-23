@@ -56,42 +56,51 @@ const AIAnalysis = () => {
         };
       }).filter(Boolean);
 
-      const promptStrict = `
-  Tu es un Ingénieur Souscripteur Senior en Assurance IARD, en Algérie. 
+     const promptStrict = `
+  Tu es un Ingénieur Expert en Risques Assuranciels (Risk Controller Senior).
   CONTEXTE : Site "${nomination}" (${natureActivite}) à ${siteAddress}.
-
-  DONNÉES D'INSPECTION (Brutes) : 
+  
+  DONNÉES D'AUDIT TERRAIN : 
   ${JSON.stringify(allQuestionsData)}
 
   MISSION DE RÉDACTION PROFESSIONNELLE :
-  1. REFORMULATION : Reprends chaque observation ("obs") pour la rendre professionnelle, concise et sans fautes.
-  2. COHÉRENCE MÉTIER : Analyse la pertinence technique. 
-     - Exemple : Pour la céramique, l'incendie n'est pas lié à des "matières inflammables" (argile/sable), mais à la charge thermique des fours (gaz/électricité) et au stockage des emballages (palettes/plastiques). 
-     - Si une observation humaine semble illogique, corrige-la techniquement tout en restant fidèle à l'esprit du constat.
-  3. ENRICHISSEMENT : Ajoute du vocabulaire technique, tout en restant dans le contexte assurentiel.
-  4. Analyser l'exposition pour ces garanties : ${nomsGarantiesCochees}.
+  1. ANALYSE ET COHÉRENCE : Analyse l'exposition pour ces garanties : ${nomsGarantiesCochees}.
+  2. CORRECTION TECHNIQUE : Si une observation terrain semble illogique, corrige-la. 
+     (Exemple : Pour la céramique, l'incendie vient de la charge thermique des fours/gaz, pas de matières inflammables comme l'argile).
+  3. STYLE : Rédige dans un style "Expert Senior" : professionnel, sans fautes, utilisant le vocabulaire de l'assurance (PML, mesures de prévention, conformité).
 
-  FORMAT JSON :
+  FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) :
   {
     "score_global": 0-100,
-    "synthese_executive": "Résumé Enrichi stratégique pour un souscripteur",
-    "analyse_nat_cat": { "exposition_sismique": "Analyse CRAAG", "exposition_hydrologique": " Analyse ASAL", "score_catnat": 1-10 },
+    "synthese_executive": "Ta synthèse enrichie et corrigée ici",
+    "analyse_nat_cat": {
+      "exposition_sismique": "Analyse technique (ex: Zone CRAAG)",
+      "exposition_hydrologique": "Analyse technique (ex: Risque inondation ASAL)",
+      "synthese_geologique": "Commentaire pro sur le sol/climat",
+      "score_catnat": 1-10
+    },
     "analyses_par_garantie": [
-      { "garantie": "Nom", "exposition": 1-10, "avis_technique": "Rédaction enrichie ici", "recommandations_standards": "Mesures concrètes reflètant le plus possible la réalité du terrain" }
+      {
+        "garantie": "Nom exact de la garantie",
+        "exposition": 1-10,
+        "avis_technique": "C'est ici que tu reformules mes observations de façon pro et cohérente avec l'activité",
+        "recommandations_standards": "Mesures de prévention concrètes et pertinentes"
+      }
     ],
     "report_narrative": [
       {
-        "section_title": "Titre du Chapitre",
-        "section_intro": "Analyse contextuelle du risque lié à l'activité ${natureActivite}",
-        "questions_reformulees": [
-           { "label": "Nom question", "val": "Valeur", "obs_pro": "Texte corrigé et enrichi par l'IA" }
-        ]
+        "section_title": "Titre pour le PDF",
+        "related_questions_ids": ["id_question1", "id_question2"],
+        "section_content": "Résumé thématique pour le rapport PDF"
       }
     ],
-    "plan_actions": { "Priorité 1": "Description" }
+    "plan_actions": {
+      "Priorité_1": "Description de l'action",
+      "Priorité_2": "Description de l'action",
+      "Priorité_3": "Description de l'action"
+    }
   }
 `;
-
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: 'POST',
         headers: { 
