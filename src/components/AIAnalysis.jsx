@@ -6,7 +6,6 @@ import {
 import { exportToPdf } from './ExportPDF';
 
 const AIAnalysis = () => {
-  // Récupération sécurisée du store
   const { responses, questionsConfig, aiResults, setAiResults, auditorInfo } = useInspectionStore();
   
   const [loading, setLoading] = useState(false);
@@ -33,7 +32,11 @@ const AIAnalysis = () => {
       const nomination = responses?.nomination?.value || "Site Industriel";
       const natureActivite = responses?.activite_nature?.value || "Non spécifiée";
       
-      // Extraction des données pour le prompt
+      // CORRECTION : Définition de la variable manquante qui causait le crash
+      const nomsGarantiesCochees = selectedGaranties.map(id => 
+        garantiesLib.find(g => g.id === id)?.label
+      ).join(", ");
+
       const allQuestionsData = Object.keys(responses || {}).map(id => {
         const q = questionsConfig?.flatMap(s => s.questions).find(qu => qu.id === id);
         if (!q) return null;
@@ -48,17 +51,15 @@ const AIAnalysis = () => {
         Tu es un Ingénieur souscripteur Expert en Risques IARD. 
         Analyse le site : ${nomination} (${natureActivite}).
         Données : ${JSON.stringify(allQuestionsData)}
-        Garanties à analyser : ${selectedGaranties.join(', ')}.
+        Garanties à analyser : ${nomsGarantiesCochees}.
 
-       
         MISSION :
         1. REFORMULATION EXPERTE : Pour chaque observation ("obs"), produis une version "obs_pro" rédigée comme un rapport d'audit.
         2. COHÉRENCE MÉTIER : Vérifie la logique entre l'activité et les risques (ex: Céramique/Fours).
-        3. ANALYSE ET RECOMMANDATIONS : Évalue l'exposition (1-10) pour : ${nomsGarantiesCochees}.
-        4.STYLE : Rédige dans un style "Expert Senior" : professionnel, sans fautes, utilisant le vocabulaire de l'assurance (mesures de prévention, conformité).
-        IMPORTANT : Pour la section "recommandations", ne te limite pas en nombre. Liste TOUTES les mesures de prévention nécessaires.
+        3. STYLE : Rédige dans un style "Expert Senior" : professionnel, utilisant le vocabulaire de l'assurance (prévention, conformité).
+        4. RECOMMANDATIONS : Ne te limite pas en nombre. Liste TOUTES les mesures de prévention nécessaires.
 
-FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) :
+        FORMAT DE RÉPONSE (JSON STRICT) :
   {
     "score_global": 0-100,
     "synthese_executive": "Ta synthèse enrichie et corrigée ici",
@@ -68,14 +69,15 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
       "synthese_geologique": "Commentaire pro sur le sol/climat",
       "score_catnat": 1-10
     },
-    "analyses_par_garantie": [
-      {
-        "garantie": "Nom exact de la garantie",
-        "exposition": 1-10,
-        "avis_technique": "C'est ici que tu reformules mes observations de façon pro et cohérente avec l'activité",
-        "recommandations_standards": "Mesures de prévention concrètes et pertinentes"
-      }
-    ],
+
+          "analyses_par_garantie": [
+            {
+              "garantie": "Nom exact",
+              "exposition": 1-10,
+              "avis_technique": "Analyse pro",
+              "recommandations": ["Action 1", "Action 2", "Action 3"]
+            }
+          ],
           "report_narrative": [
             { "section_title": "...", "questions_reformulees": [{ "label": "...", "obs_pro": "..." }] }
           ]
@@ -91,7 +93,7 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: "Tu es un expert en assurance en Algérie. Réponds uniquement en JSON pur." },
+            { role: "system", content: "Expert assurance Algérie. Répondre uniquement en JSON." },
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
@@ -105,7 +107,7 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
 
     } catch (error) {
       console.error("Erreur Analyse IA:", error);
-      alert("Erreur lors de la génération. Vérifiez votre connexion.");
+      alert("Erreur lors de la génération. Détails : " + error.message);
     } finally {
       setLoading(false);
     }
@@ -122,7 +124,7 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
           </div>
           <div>
             <h2 className="text-2xl font-black tracking-tighter uppercase italic">RiskPro AI</h2>
-            <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Analyse Expert Illimitée</p>
+            <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Expertise Risques Industriels</p>
           </div>
         </div>
 
@@ -131,13 +133,12 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
             onClick={() => exportToPdf(responses, questionsConfig, aiResults, auditorInfo)}
             className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase transition-all shadow-lg"
           >
-            <FileDown size={18} /> Télécharger le Rapport PDF
+            <FileDown size={18} /> Télécharger Rapport PDF
           </button>
         )}
       </div>
 
       {!aiResults ? (
-        /* ECRAN DE CONFIGURATION */
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="font-black text-xs uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -167,27 +168,20 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
             className="w-full py-6 bg-slate-900 hover:bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl"
           >
             {loading ? (
-              <>
-                <Loader2 className="animate-spin" />
-                <span>Ingénierie en cours...</span>
-              </>
+              <><Loader2 className="animate-spin" /><span>Analyse en cours...</span></>
             ) : (
-              <>
-                <Zap size={20} fill="currentColor" />
-                <span>Générer l'expertise complète</span>
-              </>
+              <><Zap size={20} fill="currentColor" /><span>Générer l'expertise complète</span></>
             )}
           </button>
         </div>
       ) : (
-        /* ECRAN DE RESULTATS */
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
-          {/* SCORE & SYNTHESE */}
+          {/* SCORE GLOBAL */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-center items-center shadow-xl border-b-8 border-indigo-500">
               <span className="text-6xl font-black">{aiResults?.score_global}%</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mt-2">Score de Risque</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mt-2">Maîtrise du Risque</span>
             </div>
             <div className="md:col-span-3 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center">
               <p className="text-slate-600 italic leading-relaxed text-sm">
@@ -197,7 +191,7 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
             </div>
           </div>
 
-          {/* RECOMMANDATIONS ILLIMITÉES PAR GARANTIE */}
+          {/* ANALYSE PAR GARANTIE */}
           <div className="grid grid-cols-1 gap-6">
             {aiResults?.analyses_par_garantie?.map((gar, idx) => (
               <div key={idx} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -211,13 +205,13 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
                 
                 <div className="p-8 space-y-6">
                   <div>
-                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-2">Analyse de l'expert</p>
+                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-2">Avis de l'Expert</p>
                     <p className="text-sm text-slate-600 leading-relaxed">{gar.avis_technique}</p>
                   </div>
 
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-rose-400 uppercase mb-2 flex items-center gap-2">
-                      <AlertTriangle size={12} /> Mesures de prévention recommandées
+                      <AlertTriangle size={12} /> Mesures de prévention (Illimitées)
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {gar.recommandations?.map((rec, i) => (
@@ -235,9 +229,9 @@ FORMAT DE RÉPONSE (JSON STRICT - RESPECTER CES CLÉS EXACTES POUR L'AFFICHAGE) 
 
           <button 
             onClick={() => setAiResults(null)}
-            className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 hover:border-slate-300 transition-all"
+            className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold uppercase text-[10px] hover:bg-slate-50 transition-all"
           >
-            Relancer une nouvelle analyse
+            Nouvelle analyse
           </button>
         </div>
       )}
