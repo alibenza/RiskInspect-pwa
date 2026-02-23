@@ -10,7 +10,6 @@ const AIAnalysis = () => {
   
   const [loading, setLoading] = useState(false);
   const [selectedGaranties, setSelectedGaranties] = useState(['Incendie_explosion', 'Bris_De_Machine', 'RC']);
-  const [isGarantiesOpen, setIsGarantiesOpen] = useState(true);
 
   const garantiesLib = [
     { id: 'Incendie_explosion', label: 'Incendie & Explosion' },
@@ -32,7 +31,6 @@ const AIAnalysis = () => {
       const nomination = responses?.nomination?.value || "Site Industriel";
       const natureActivite = responses?.activite_nature?.value || "Non spécifiée";
       
-      // CORRECTION : Définition de la variable manquante qui causait le crash
       const nomsGarantiesCochees = selectedGaranties.map(id => 
         garantiesLib.find(g => g.id === id)?.label
       ).join(", ");
@@ -48,42 +46,38 @@ const AIAnalysis = () => {
       }).filter(Boolean);
 
       const promptStrict = `
-        Tu es un Ingénieur souscripteur Expert en Risques IARD. 
+        Tu es un Ingénieur Souscripteur Senior en Risques Industriels (Expert IARD Algérie).
         Analyse le site : ${nomination} (${natureActivite}).
-        Données : ${JSON.stringify(allQuestionsData)}
-        Garanties à analyser : ${nomsGarantiesCochees}.
+        Garanties : ${nomsGarantiesCochees}.
+        Données d'audit : ${JSON.stringify(allQuestionsData)}
 
-        MISSION :
-        1. REFORMULATION EXPERTE : Pour chaque observation ("obs"), produis une version "obs_pro" rédigée comme un rapport d'audit.
-        2. COHÉRENCE MÉTIER : Vérifie la logique entre l'activité et les risques (ex: Céramique/Fours).
-        3. STYLE : Rédige dans un style "Expert Senior" : professionnel, utilisant le vocabulaire de l'assurance (prévention, conformité).
-        4. RECOMMANDATIONS : Ne te limite pas en nombre. Liste TOUTES les mesures de prévention nécessaires.
+        MISSIONS :
+        1. ANALYSE TECHNIQUE : Évalue la vulnérabilité du site.
+        2. NAT-CAT : Spécificités Algérie (Zones CRAAG, RPA, risques inondations locaux).
+        3. DÉCISIONNEL : Justifie l'acceptabilité du risque.
+        4. PRÉVENTION : Mesures impératives.
 
-        FORMAT DE RÉPONSE (JSON STRICT) :
-  {
-    "score_global": 0-100,
-    "synthese_executive": "Ta synthèse enrichie et corrigée ici",
-    "analyse_nat_cat": {
-      "exposition_sismique": "Analyse technique (ex: Zone CRAAG)",
-      "exposition_hydrologique": "Analyse technique (ex: Risque inondation ASAL)",
-      "synthese_geologique": "Commentaire pro sur le sol/climat",
-      "score_catnat": 1-10
-    },
-
+        REPONDRE UNIQUEMENT EN JSON :
+        {
+          "score_global": 0-100,
+          "synthese_executive": "...",
+          "analyse_nat_cat": {
+            "exposition_sismique": "...",
+            "exposition_hydrologique": "...",
+            "synthese_geologique": "...",
+            "score_catnat": 1-10
+          },
           "analyses_par_garantie": [
             {
-              "garantie": "Nom exact",
+              "garantie": "Nom",
               "exposition": 1-10,
-              "avis_technique": "Analyse pro",
-              "recommandations": ["Action 1", "Action 2", "Action 3"]
+              "avis_technique": "...",
+              "recommandations": ["..."]
             }
-          ],
-          "report_narrative": [
-            { "section_title": "...", "questions_reformulees": [{ "label": "...", "obs_pro": "..." }] }
           ]
-        }
-      `;
+        }`;
 
+      // --- CORRECTION : AJOUT DU FETCH MANQUANT ---
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: 'POST',
         headers: { 
@@ -93,13 +87,15 @@ const AIAnalysis = () => {
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: "Expert assurance Algérie. Répondre uniquement en JSON." },
+            { role: "system", content: "Expert IARD Algérie. JSON uniquement." },
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.1
+          temperature: 0.3
         })
       });
+
+      if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
 
       const rawData = await response.json();
       const parsedResults = JSON.parse(rawData.choices[0].message.content);
@@ -107,7 +103,7 @@ const AIAnalysis = () => {
 
     } catch (error) {
       console.error("Erreur Analyse IA:", error);
-      alert("Erreur lors de la génération. Détails : " + error.message);
+      alert("Erreur lors de la génération : " + error.message);
     } finally {
       setLoading(false);
     }
@@ -211,7 +207,7 @@ const AIAnalysis = () => {
 
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-rose-400 uppercase mb-2 flex items-center gap-2">
-                      <AlertTriangle size={12} /> Mesures de prévention (Illimitées)
+                      <AlertTriangle size={12} /> Mesures de prévention
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {gar.recommandations?.map((rec, i) => (
