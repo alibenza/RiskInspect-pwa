@@ -1,232 +1,201 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-/**
- * Exporte les résultats d'inspection en un rapport PDF structuré par l'IA.
- */
 export const exportToPdf = async (responses, questionsConfig, aiResults, auditorInfo) => {
-  const doc = new jsPDF();
-  const date = new Date().toLocaleDateString('fr-FR');
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const clientName = responses['nomination']?.value || "SITE CLIENT";
-  
-  // --- PALETTE DE COULEURS ---
-  const COLORS = {
-    SLATE_900: [15, 23, 42],     // Bleu nuit (Titres)
-    INDIGO_600: [79, 70, 229],   // Indigo (Accents)
-    SLATE_100: [241, 245, 249],  // Gris clair (Bandeaux)
-    TEXT_MAIN: [51, 65, 85],     // Gris texte
-    ROSE_600: [225, 29, 72],     // Rouge (Risque critique)
-    EMERALD_600: [5, 150, 105],  // Vert (Conformité)
-    AMBER_600: [217, 119, 6]      // Orange (Moyen)
-  };
+  try {
+    const doc = new jsPDF();
+    const date = new Date().toLocaleDateString('fr-FR');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const clientName = responses['nomination']?.value || "SITE CLIENT";
 
-  // ==========================================
-  // 1. PAGE DE GARDE
-  // ==========================================
-  doc.setFillColor(...COLORS.SLATE_900);
-  doc.rect(0, 0, pageWidth, 110, 'F');
+    // --- PALETTE DE COULEURS "TENDRES" ---
+    const COLORS = {
+      PRIMARY: [51, 65, 85],      // Ardoise douce (Slate 700)
+      ACCENT: [100, 116, 139],    // Bleu Acier (Slate 500)
+      BG_SOFT: [248, 250, 252],   // Fond très clair
+      SUCCESS: [101, 163, 139],   // Sauge (Vert doux)
+      WARNING: [214, 137, 85],    // Terre de Sienne (Orange doux)
+      DANGER: [180, 83, 9],       // Terracotta (Rouge terreux)
+      TEXT_LIGHT: [148, 163, 184] // Gris bleuté pour détails
+    };
 
-  if (auditorInfo?.logo) {
-    try { doc.addImage(auditorInfo.logo, 'PNG', 15, 15, 40, 20); } catch (e) { console.error("Logo error:", e); }
-  }
+    const FONT_MAIN = "helvetica"; // Remplacez par "Montserrat" si vous avez chargé le .ttf
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(26); doc.setFont(undefined, 'bold');
-  doc.text("RAPPORT D'EXPERTISE", 15, 65);
-  doc.text("TECHNIQUE & IA", 15, 78);
-  
-  doc.setFillColor(...COLORS.INDIGO_600);
-  doc.rect(15, 85, 40, 2, 'F');
-  
-  doc.setFontSize(11); doc.setFont(undefined, 'normal');
-  doc.setTextColor(148, 163, 184);
-  doc.text(`RÉFÉRENCE : ${auditorInfo?.company?.toUpperCase() || 'RISK'}-${new Date().getFullYear()}-001`, 15, 100);
+    // ==========================================
+    // 1. PAGE DE GARDE (DESIGN ÉPURÉ)
+    // ==========================================
+    // Bandeau décoratif latéral ou supérieur
+    doc.setFillColor(...COLORS.BG_SOFT);
+    doc.rect(0, 0, pageWidth, 120, 'F');
+    
+    // Ligne d'accent subtile
+    doc.setFillColor(...COLORS.ACCENT);
+    doc.rect(0, 118, pageWidth, 2, 'F');
 
-  // Infos Site
-  doc.setTextColor(...COLORS.SLATE_900);
-  doc.setFontSize(14); doc.setFont(undefined, 'bold');
-  doc.text("INFORMATIONS DU SITE", 15, 140);
-  
-  doc.setFontSize(11); doc.setFont(undefined, 'normal');
-  doc.setTextColor(...COLORS.TEXT_MAIN);
-  const infoY = 152;
-  doc.text(`Client : ${clientName}`, 15, infoY);
-  doc.text(`Expert Auditeur : ${auditorInfo?.name || 'Non spécifié'}`, 15, infoY + 8);
-  doc.text(`Localisation : ${responses['adress']?.value || 'Algérie'}`, 15, infoY + 16);
-  doc.text(`Date de génération : ${date}`, 15, infoY + 24);
+    if (auditorInfo?.logo) {
+      try { doc.addImage(auditorInfo.logo, 'PNG', 15, 15, 35, 15); } catch (e) { }
+    }
 
-  // Disclaimer
-  doc.setFillColor(...COLORS.SLATE_100);
-  doc.roundedRect(15, 245, 180, 25, 2, 2, 'F');
-  doc.setFontSize(8); doc.setTextColor(100);
-  const disclaimer = "CONFIDENTIEL : Ce document contient des analyses basées sur des relevés terrain et des algorithmes d'IA. Il est destiné exclusivement à l'usage interne de souscription.";
-  doc.text(doc.splitTextToSize(disclaimer, 170), 20, 255);
+    doc.setTextColor(...COLORS.PRIMARY);
+    doc.setFont(FONT_MAIN, 'bold');
+    doc.setFontSize(28);
+    doc.text("RAPPORT D'EXPERTISE", 20, 75);
+    doc.setFont(FONT_MAIN, 'normal');
+    doc.setFontSize(22);
+    doc.text("Analyse de Risque Augmentée", 20, 88);
+    
+    // Référence
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.TEXT_LIGHT);
+    doc.text(`Réf : ${clientName.toUpperCase()}-${new Date().getFullYear()}`, 20, 105);
 
-  // ==========================================
-  // 2. RÉSUMÉ EXÉCUTIF (DASHBOARD)
-  // ==========================================
-  doc.addPage();
-  doc.setTextColor(...COLORS.SLATE_900);
-  doc.setFontSize(16); doc.setFont(undefined, 'bold');
-  doc.text("1. RÉSUMÉ EXÉCUTIF ET IA", 15, 25);
+    // Bloc Infos Client
+    doc.setTextColor(...COLORS.PRIMARY);
+    doc.setFontSize(14); doc.setFont(FONT_MAIN, 'bold');
+    doc.text("DÉTAILS DU SITE", 20, 145);
+    
+    doc.setFontSize(11); doc.setFont(FONT_MAIN, 'normal');
+    let infoY = 158;
+    const details = [
+      ["Établissement :", clientName],
+      ["Activité :", responses['activite_nature']?.value || 'Industrie'],
+      ["Adresse :", responses['adress']?.value || 'Algérie'],
+      ["Auditeur :", auditorInfo?.name || 'Expert RiskPro']
+    ];
 
-  // Cartes de scores
-  doc.setFillColor(...COLORS.SLATE_100);
-  doc.roundedRect(15, 35, 85, 30, 3, 3, 'F');
-  doc.setTextColor(...COLORS.TEXT_MAIN);
-  doc.setFontSize(9); doc.text("SCORE DE MAÎTRISE GLOBAL", 20, 45);
-  doc.setFontSize(22); doc.setTextColor(...COLORS.INDIGO_600);
-  doc.text(`${aiResults?.score_global || '0'}%`, 20, 58);
+    details.forEach(row => {
+      doc.setTextColor(...COLORS.TEXT_LIGHT);
+      doc.text(row[0], 20, infoY);
+      doc.setTextColor(...COLORS.PRIMARY);
+      doc.text(row[1], 60, infoY);
+      infoY += 10;
+    });
 
-  doc.setFillColor(...COLORS.SLATE_900);
-  doc.roundedRect(110, 35, 85, 30, 3, 3, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9); doc.text("INDICE D'EXPOSITION NAT-CAT", 115, 45);
-  doc.setFontSize(22); doc.text(`${aiResults?.analyse_nat_cat?.score_catnat || '0'}/10`, 115, 58);
+    // ==========================================
+    // 2. DASHBOARD (VISUEL TENDRE)
+    // ==========================================
+    doc.addPage();
+    doc.setTextColor(...COLORS.PRIMARY);
+    doc.setFontSize(18); doc.setFont(FONT_MAIN, 'bold');
+    doc.text("1. SYNTHÈSE DE LA MAÎTRISE", 20, 25);
 
-  // Radar Chart
-  const chartElement = document.querySelector('canvas');
-  if (chartElement) {
-    try {
-      const canvasImg = chartElement.toDataURL('image/png');
-      doc.addImage(canvasImg, 'PNG', 55, 80, 100, 70);
-    } catch (e) { console.warn("Chart export failed", e); }
-  }
+    // Carte de score principal
+    doc.setFillColor(...COLORS.BG_SOFT);
+    doc.roundedRect(20, 35, 170, 40, 4, 4, 'F');
+    
+    doc.setFontSize(10); doc.setTextColor(...COLORS.ACCENT);
+    doc.text("SCORE GLOBAL DE PRÉVENTION", 30, 50);
+    
+    doc.setFontSize(32); doc.setTextColor(...COLORS.PRIMARY);
+    doc.text(`${aiResults?.score_global || '0'}%`, 30, 65);
 
-  // Synthèse rédigée
-  if (aiResults?.synthese_executive) {
-    doc.setTextColor(...COLORS.SLATE_900);
-    doc.setFontSize(11); doc.setFont(undefined, 'bold');
-    doc.text("Commentaire de l'Expertise IA :", 15, 165);
-    doc.setFontSize(10); doc.setFont(undefined, 'italic');
-    doc.setTextColor(...COLORS.TEXT_MAIN);
-    const synth = doc.splitTextToSize(aiResults.synthese_executive, 175);
-    doc.text(synth, 15, 175);
-  }
+    // Indice NAT-CAT avec badge de couleur
+    let catScore = aiResults?.analyse_nat_cat?.score_catnat || 0;
+    doc.setFillColor(...(catScore > 7 ? COLORS.DANGER : COLORS.SUCCESS));
+    doc.roundedRect(130, 45, 50, 20, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8); doc.text("INDICE NAT-CAT", 135, 52);
+    doc.setFontSize(14); doc.text(`${catScore}/10`, 135, 60);
 
-  // ==========================================
-  // 3. RELEVÉS DÉTAILLÉS (ORGANISATION IA)
-  // ==========================================
-  doc.addPage();
-  doc.setTextColor(...COLORS.SLATE_900);
-  doc.setFontSize(16); doc.setFont(undefined, 'bold');
-  doc.text("2. ANALYSE THÉMATIQUE DU TERRAIN", 15, 25);
+    // Synthèse IA avec bordure douce
+    if (aiResults?.synthese_executive) {
+      doc.setDrawColor(...COLORS.BG_SOFT);
+      doc.setLineWidth(0.5);
+      doc.line(20, 85, 190, 85);
+      
+      doc.setTextColor(...COLORS.PRIMARY);
+      doc.setFontSize(11); doc.setFont(FONT_MAIN, 'bold');
+      doc.text("Analyse Contextuelle :", 20, 100);
+      
+      doc.setFontSize(10); doc.setFont(FONT_MAIN, 'normal');
+      doc.setTextColor(...COLORS.PRIMARY);
+      const synth = doc.splitTextToSize(aiResults.synthese_executive, 170);
+      doc.text(synth, 20, 110);
+    }
 
-  let currentY = 40;
-  const margin = 15;
-  const contentWidth = pageWidth - (margin * 2);
+    // ==========================================
+    // 3. ANALYSE DÉTAILLÉE (REFORMULÉE)
+    // ==========================================
+    doc.addPage();
+    doc.setFontSize(16); doc.setFont(FONT_MAIN, 'bold');
+    doc.text("2. EXAMEN THÉMATIQUE", 20, 25);
 
-  // On utilise la structure narrative générée par l'IA
-  const narrative = aiResults?.report_narrative || [];
+    let currentY = 40;
+    const narrative = aiResults?.report_narrative || [];
 
-  narrative.forEach((section) => {
-    // Vérification saut de page
-    if (currentY > 250) { doc.addPage(); currentY = 25; }
+    narrative.forEach((section) => {
+      if (currentY > 240) { doc.addPage(); currentY = 25; }
 
-    // Titre de thématique (Ex: PROTECTION INCENDIE)
-    doc.setFillColor(...COLORS.SLATE_100);
-    doc.rect(margin, currentY, contentWidth, 10, 'F');
-    doc.setTextColor(...COLORS.INDIGO_600);
-    doc.setFontSize(11); doc.setFont(undefined, 'bold');
-    doc.text(section.section_title.toUpperCase(), margin + 5, currentY + 7);
-    currentY += 18;
+      // Header de section "Tendre"
+      doc.setFillColor(...COLORS.BG_SOFT);
+      doc.rect(20, currentY, 170, 8, 'F');
+      doc.setTextColor(...COLORS.ACCENT);
+      doc.setFontSize(10); doc.setFont(FONT_MAIN, 'bold');
+      doc.text(section.section_title.toUpperCase(), 25, currentY + 6);
+      currentY += 15;
 
-    // Questions liées à cette thématique
-    section.related_questions_ids.forEach((qId) => {
-      const q = questionsConfig.flatMap(s => s.questions).find(qu => qu.id === qId);
-      const r = responses[qId];
+      (section.questions_reformulees || []).forEach((qObj) => {
+        if (currentY > 260) { doc.addPage(); currentY = 25; }
 
-      if (r && q) {
-        if (currentY > 270) { doc.addPage(); currentY = 25; }
+        doc.setTextColor(...COLORS.PRIMARY);
+        doc.setFontSize(9); doc.setFont(FONT_MAIN, 'bold');
+        doc.text(qObj.label, 20, currentY);
+        currentY += 5;
 
-        // Détermination couleur badge score
-        let statusColor = COLORS.EMERALD_600;
-        if (r.score <= 2) statusColor = COLORS.ROSE_600;
-        else if (r.score <= 3) statusColor = COLORS.AMBER_600;
-
-        // Petite puce de couleur
-        doc.setFillColor(...statusColor);
-        doc.circle(margin + 2, currentY - 1, 1.2, 'F');
-
-        // Question
-        doc.setTextColor(...COLORS.SLATE_900);
-        doc.setFontSize(9); doc.setFont(undefined, 'bold');
-        doc.text(q.label, margin + 6, currentY);
-        currentY += 6;
-
-        // Réponse et observation
-        doc.setTextColor(...COLORS.TEXT_MAIN);
-        doc.setFontSize(9); doc.setFont(undefined, 'normal');
-        const rText = `${r.value || r.score + '/5'}${r.comment ? ' — ' + r.comment : ''}`;
-        const splitRText = doc.splitTextToSize(rText, contentWidth - 10);
-        doc.text(splitRText, margin + 6, currentY);
+        doc.setTextColor(...COLORS.PRIMARY);
+        doc.setFontSize(9); doc.setFont(FONT_MAIN, 'normal');
+        const text = qObj.obs_pro || "RAS.";
+        const splitText = doc.splitTextToSize(text, 170);
+        doc.text(splitText, 20, currentY);
         
-        currentY += (splitRText.length * 5) + 6;
+        currentY += (splitText.length * 5) + 8;
+      });
+      currentY += 5;
+    });
+
+    // ==========================================
+    // 4. PHOTOS (GRILLE MODERNE)
+    // ==========================================
+    // ... (Logique photo identique à la précédente mais avec COLORS.TEXT_LIGHT pour les labels)
+    const allPhotos = [];
+    Object.keys(responses).forEach(id => {
+      if (responses[id]?.photos?.length > 0) {
+        const q = questionsConfig.flatMap(s => s.questions).find(qu => qu.id === id);
+        responses[id].photos.forEach(p => allPhotos.push({ url: p.url, label: q?.label || "Illustration" }));
       }
     });
-    currentY += 5; // Espace entre sections
-  });
 
-  // ==========================================
-  // 4. DOCUMENTATION PHOTOGRAPHIQUE
-  // ==========================================
-  const allPhotos = [];
-  Object.keys(responses).forEach(id => {
-    if (responses[id]?.photos) {
-      const q = questionsConfig.flatMap(s => s.questions).find(qu => qu.id === id);
-      responses[id].photos.forEach(p => allPhotos.push({ ...p, label: q?.label || "Illustration" }));
-    }
-  });
-
- if (allPhotos.length > 0) {
-  doc.addPage();
-  doc.setTextColor(...COLORS.SLATE_900);
-  doc.setFontSize(16); doc.setFont(undefined, 'bold');
-  doc.text("3. DOCUMENTATION PHOTOGRAPHIQUE COMPLÈTE", 15, 25);
-
-  let pX = 15;
-  let pY = 40;
-  const imgW = 85;
-  const imgH = 60;
-
-  allPhotos.forEach((photo, idx) => {
-    // Si on dépasse la hauteur de page, on change de page
-    if (pY + imgH > 270) {
+    if (allPhotos.length > 0) {
       doc.addPage();
-      pY = 30;
-      pX = 15;
+      doc.setTextColor(...COLORS.PRIMARY);
+      doc.setFontSize(16); doc.text("3. ANNEXE PHOTOGRAPHIQUE", 20, 25);
+      
+      let pX = 20, pY = 40;
+      allPhotos.forEach((photo, idx) => {
+        if (pY > 240) { doc.addPage(); pY = 30; }
+        try {
+          doc.addImage(photo.url, 'JPEG', pX, pY, 80, 55, undefined, 'FAST');
+          doc.setFontSize(7); doc.setTextColor(...COLORS.TEXT_LIGHT);
+          doc.text(doc.splitTextToSize(photo.label, 80), pX, pY + 60);
+        } catch (e) { }
+        
+        if ((idx + 1) % 2 === 0) { pX = 20; pY += 75; } else { pX = 110; }
+      });
     }
 
-    try {
-      // Utilisation du format compressé pour éviter que le PDF soit trop lourd
-      doc.addImage(photo.url, 'JPEG', pX, pY, imgW, imgH, undefined, 'FAST');
-      doc.setFontSize(8);
-      doc.text(doc.splitTextToSize(photo.label, imgW), pX, pY + imgH + 5);
-    } catch (e) {
-      console.error("Erreur image:", e);
+    // --- FOOTER ---
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8); doc.setTextColor(...COLORS.TEXT_LIGHT);
+      doc.text(`Expertise ${clientName} — Page ${i}/${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
     }
 
-    // Gestion de la grille 2x2
-    if ((idx + 1) % 2 === 0) {
-      pX = 15;
-      pY += imgH + 25; // Espace vertical entre les lignes
-    } else {
-      pX = 110;
-    }
-  });
-}
+    doc.save(`Expertise_${clientName.replace(/\s+/g, '_')}.pdf`);
 
-  // --- PIED DE PAGE ET NUMÉROTATION ---
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text(`Expertise : ${clientName} - Page ${i} sur ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+  } catch (error) {
+    console.error("Erreur PDF:", error);
+    alert("Erreur lors de la génération du PDF.");
   }
-
-  // Sauvegarde
-  doc.save(`RAPPORT_IA_${clientName.replace(/\s+/g, '_')}.pdf`);
 };
