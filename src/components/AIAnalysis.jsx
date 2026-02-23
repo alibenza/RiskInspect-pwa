@@ -57,36 +57,39 @@ const AIAnalysis = () => {
       }).filter(Boolean);
 
       const promptStrict = `
-        Tu es un Ingénieur Expert en Risques Assuranciels, en Algérie. 
-        CONTEXTE : Site "${nomination}" (${natureActivite}) à ${siteAddress}.
-        DONNÉES D'INSPECTION : ${JSON.stringify(allQuestionsData)}
-        
-        MISSION : 
-        1. Analyser l'exposition pour ces garanties : ${nomsGarantiesCochees}.
-        2. Analyser l'exposition pour les catastrophes naturelles selon les bases de données CRAAG, ASAL, et l'outil ThinkHazard.
-        3. ORGANISER LE RAPPORT : Regroupe les IDs des questions en 3 ou 4 sections narratives logiques (ex: "Sécurité Incendie", "Maintenance", "Environnement").
+  Tu es un Ingénieur Souscripteur Senior en Assurance IARD, en Algérie. 
+  CONTEXTE : Site "${nomination}" (${natureActivite}) à ${siteAddress}.
 
-        FORMAT DE RÉPONSE (JSON STRICT) :
-        {
-          "score_global": 0-100,
-          "synthese_executive": "Texte pro",
-          "analyse_nat_cat": {
-            "exposition_sismique": "Analyse CRAAG",
-            "exposition_hydrologique": "Analyse ASAL",
-            "score_catnat": 1-10
-          },
-          "analyses_par_garantie": [
-            { "garantie": "Nom", "exposition": 1-10, "avis_technique": "...", "recommandations_standards": "..." }
-          ],
-          "report_narrative": [
-            {
-              "section_title": "Titre Thématique",
-              "related_questions_ids": ["id1", "id2"]
-            }
-          ],
-          "plan_actions": { "Action_1": "Description" }
-        }
-      `;
+  DONNÉES D'INSPECTION (Brutes) : 
+  ${JSON.stringify(allQuestionsData)}
+
+  MISSION DE RÉDACTION PROFESSIONNELLE :
+  1. REFORMULATION : Reprends chaque observation ("obs") pour la rendre professionnelle, concise et sans fautes.
+  2. COHÉRENCE MÉTIER : Analyse la pertinence technique. 
+     - Exemple : Pour la céramique, l'incendie n'est pas lié à des "matières inflammables" (argile/sable), mais à la charge thermique des fours (gaz/électricité) et au stockage des emballages (palettes/plastiques). 
+     - Si une observation humaine semble illogique, corrige-la techniquement tout en restant fidèle à l'esprit du constat.
+  3. ENRICHISSEMENT : Ajoute du vocabulaire technique, tout en restant dans le contexte assurentiel.
+
+  FORMAT JSON :
+  {
+    "score_global": 0-100,
+    "synthese_executive": "Résumé stratégique pour un souscripteur",
+    "analyse_nat_cat": { "exposition_sismique Selon CRAAG": "...", "exposition_hydrologique selon ASAL ": "Résumé d'exposition selon l'outil ThinkHazard", "score_catnat": 1-10 },
+    "analyses_par_garantie": [
+      { "garantie": "Nom", "exposition": 1-10, "avis_technique": "Rédaction enrichie ici", "recommandations_standards": "Mesures concrètes reflètant le plus possible la réalité du terrain" }
+    ],
+    "report_narrative": [
+      {
+        "section_title": "Titre du Chapitre",
+        "section_intro": "Analyse contextuelle du risque lié à l'activité ${natureActivite}",
+        "questions_reformulees": [
+           { "label": "Nom question", "val": "Valeur", "obs_pro": "Texte corrigé et enrichi par l'IA" }
+        ]
+      }
+    ],
+    "plan_actions": { "Priorité 1": "Description" }
+  }
+`;
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: 'POST',
