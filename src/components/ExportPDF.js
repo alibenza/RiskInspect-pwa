@@ -180,32 +180,43 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
     }
   });
 
-  if (allPhotos.length > 0) {
-    doc.addPage();
-    doc.setTextColor(...COLORS.SLATE_900);
-    doc.setFontSize(16); doc.setFont(undefined, 'bold');
-    doc.text("3. DOCUMENTATION PHOTOGRAPHIQUE", 15, 25);
+ if (allPhotos.length > 0) {
+  doc.addPage();
+  doc.setTextColor(...COLORS.SLATE_900);
+  doc.setFontSize(16); doc.setFont(undefined, 'bold');
+  doc.text("3. DOCUMENTATION PHOTOGRAPHIQUE COMPLÈTE", 15, 25);
 
-    let pX = 15;
-    let pY = 40;
+  let pX = 15;
+  let pY = 40;
+  const imgW = 85;
+  const imgH = 60;
 
-    allPhotos.forEach((photo, idx) => {
-      if (idx > 0 && idx % 4 === 0) { doc.addPage(); pY = 40; }
-      
-      try {
-        doc.addImage(photo.url, 'JPEG', pX, pY, 85, 60);
-        doc.setFontSize(7); doc.setTextColor(100);
-        doc.text(doc.splitTextToSize(photo.label, 80), pX, pY + 65);
-      } catch (e) { console.warn("Image error", e); }
+  allPhotos.forEach((photo, idx) => {
+    // Si on dépasse la hauteur de page, on change de page
+    if (pY + imgH > 270) {
+      doc.addPage();
+      pY = 30;
+      pX = 15;
+    }
 
-      if ((idx + 1) % 2 === 0) {
-        pX = 15;
-        pY += 85;
-      } else {
-        pX = 110;
-      }
-    });
-  }
+    try {
+      // Utilisation du format compressé pour éviter que le PDF soit trop lourd
+      doc.addImage(photo.url, 'JPEG', pX, pY, imgW, imgH, undefined, 'FAST');
+      doc.setFontSize(8);
+      doc.text(doc.splitTextToSize(photo.label, imgW), pX, pY + imgH + 5);
+    } catch (e) {
+      console.error("Erreur image:", e);
+    }
+
+    // Gestion de la grille 2x2
+    if ((idx + 1) % 2 === 0) {
+      pX = 15;
+      pY += imgH + 25; // Espace vertical entre les lignes
+    } else {
+      pX = 110;
+    }
+  });
+}
 
   // --- PIED DE PAGE ET NUMÉROTATION ---
   const totalPages = doc.internal.getNumberOfPages();
