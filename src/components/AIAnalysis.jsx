@@ -57,13 +57,14 @@ const AIAnalysis = () => {
       }).filter(Boolean);
 
       const promptStrict = `
-        Tu es un Ingénieur Expert en Risques Assuranciels. 
+        Tu es un Ingénieur Expert en Risques Assuranciels, en Algérie. 
         CONTEXTE : Site "${nomination}" (${natureActivite}) à ${siteAddress}.
         DONNÉES D'INSPECTION : ${JSON.stringify(allQuestionsData)}
         
         MISSION : 
         1. Analyser l'exposition pour ces garanties : ${nomsGarantiesCochees}.
-        2. ORGANISER LE RAPPORT : Regroupe les IDs des questions en 3 ou 4 sections narratives logiques (ex: "Sécurité Incendie", "Maintenance", "Environnement").
+        2. Analyser l'exposition pour les catastrophes naturelles selon les bases de données CRAAG, ASAL, et l'outil ThinkHazard.
+        3. ORGANISER LE RAPPORT : Regroupe les IDs des questions en 3 ou 4 sections narratives logiques (ex: "Sécurité Incendie", "Maintenance", "Environnement").
 
         FORMAT DE RÉPONSE (JSON STRICT) :
         {
@@ -100,7 +101,7 @@ const AIAnalysis = () => {
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.1
+          temperature: 0.3
         })
       });
 
