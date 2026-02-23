@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 import PhotoCapture from './PhotoCapture';
+import AIRedesignButton from '../utils/AIRedesignButton'; // Import du bouton IA
 import { 
   MessageSquareText, 
   AlertCircle, 
@@ -22,10 +23,10 @@ const InspectionForm = () => {
     addQuestion,
     addPhoto, 
     removePhoto,
-    resetAudit // Récupération de l'action de reset
+    resetAudit 
   } = useInspectionStore();
 
-  const [openSections, setOpenSections] = useState({ 0: true }); // Première section ouverte par défaut
+  const [openSections, setOpenSections] = useState({ 0: true });
 
   if (!questionsConfig || questionsConfig.length === 0) {
     return (
@@ -40,10 +41,9 @@ const InspectionForm = () => {
     setOpenSections(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  // --- MODIFICATION : SÉCURISATION DE LA PERSISTANCE ---
   const handleScoreChange = (qId, score, label) => {
     setResponse(qId, {
-      value: responses[qId]?.value || label, // Garde la valeur existante ou met le label
+      value: responses[qId]?.value || label,
       score: score,
       label: label,
       isScored: true
@@ -138,14 +138,28 @@ const InspectionForm = () => {
                       />
                     )}
 
-                    <div className="relative">
-                      <MessageSquareText size={14} className="absolute left-4 top-4 text-slate-300" />
-                      <textarea
-                        placeholder="Observations techniques..."
-                        value={responses[q.id]?.comment || ''}
-                        onChange={(e) => handleCommentChange(q.id, e.target.value)}
-                        className="w-full bg-slate-50 border-none rounded-xl p-4 pl-10 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[60px]"
-                      />
+                    {/* ZONE OBSERVATION AVEC BOUTON IA */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-end px-1">
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
+                          <MessageSquareText size={10} /> Observations
+                        </span>
+                        
+                        {/* INJECTION DU BOUTON IA */}
+                        <AIRedesignButton 
+                          currentText={responses[q.id]?.comment} 
+                          onUpdate={(newText) => handleCommentChange(q.id, newText)}
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <textarea
+                          placeholder="Notez vos remarques ici..."
+                          value={responses[q.id]?.comment || ''}
+                          onChange={(e) => handleCommentChange(q.id, e.target.value)}
+                          className="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 transition-all min-h-[80px]"
+                        />
+                      </div>
                     </div>
 
                     {/* SECTION PHOTO */}
