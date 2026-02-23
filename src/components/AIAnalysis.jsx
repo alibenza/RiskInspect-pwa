@@ -69,12 +69,13 @@ const AIAnalysis = () => {
      - Exemple : Pour la céramique, l'incendie n'est pas lié à des "matières inflammables" (argile/sable), mais à la charge thermique des fours (gaz/électricité) et au stockage des emballages (palettes/plastiques). 
      - Si une observation humaine semble illogique, corrige-la techniquement tout en restant fidèle à l'esprit du constat.
   3. ENRICHISSEMENT : Ajoute du vocabulaire technique, tout en restant dans le contexte assurentiel.
+  4. Analyser l'exposition pour ces garanties : ${nomsGarantiesCochees}.
 
   FORMAT JSON :
   {
     "score_global": 0-100,
-    "synthese_executive": "Résumé stratégique pour un souscripteur",
-    "analyse_nat_cat": { "exposition_sismique Selon CRAAG": "...", "exposition_hydrologique selon ASAL ": "Résumé d'exposition selon l'outil ThinkHazard", "score_catnat": 1-10 },
+    "synthese_executive": "Résumé Enrichi stratégique pour un souscripteur",
+    "analyse_nat_cat": { "exposition_sismique": "Analyse CRAAG", "exposition_hydrologique": " Analyse ASAL", "score_catnat": 1-10 },
     "analyses_par_garantie": [
       { "garantie": "Nom", "exposition": 1-10, "avis_technique": "Rédaction enrichie ici", "recommandations_standards": "Mesures concrètes reflètant le plus possible la réalité du terrain" }
     ],
