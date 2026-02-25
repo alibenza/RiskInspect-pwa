@@ -1,6 +1,6 @@
 import React from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import { User, Building2, Image as ImageIcon } from 'lucide-react';
+import { User, Building2, Image as ImageIcon, Calendar } from 'lucide-react';
 
 const AuditorSettings = () => {
   const { auditorInfo, setAuditorInfo } = useInspectionStore();
@@ -20,7 +20,7 @@ const AuditorSettings = () => {
     <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">
-          Profil de l'Auditeur
+          Profil & Session d'Audit
         </h3>
         {auditorInfo?.logo && (
           <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-100 shadow-inner">
@@ -29,7 +29,8 @@ const AuditorSettings = () => {
         )}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Nom de l'expert */}
         <div className="relative group">
           <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={16} />
           <input 
@@ -41,6 +42,7 @@ const AuditorSettings = () => {
           />
         </div>
         
+        {/* Cabinet / Entreprise */}
         <div className="relative group">
           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={16} />
           <input 
@@ -50,6 +52,23 @@ const AuditorSettings = () => {
             value={auditorInfo?.company || ''}
             onChange={(e) => setAuditorInfo({ company: e.target.value })}
           />
+        </div>
+
+        {/* DATE DE LA VISITE (NOUVEAU) */}
+        <div className="relative group">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={16} />
+          <input 
+            type="date" 
+            className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-2xl text-sm border-2 border-transparent focus:border-indigo-100 focus:bg-white focus:ring-0 transition-all outline-none text-slate-600"
+            value={auditorInfo?.inspectionDate || ''}
+            onChange={(e) => setAuditorInfo({ inspectionDate: e.target.value })}
+          />
+          {/* Un petit label flottant pour indiquer que c'est la date de visite */}
+          {!auditorInfo?.inspectionDate && (
+            <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">
+              Date de visite
+            </span>
+          )}
         </div>
       </div>
 
