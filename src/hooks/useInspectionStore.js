@@ -87,6 +87,7 @@ export const useInspectionStore = create(
         name: '',
         company: '',
         logo: null
+        inspectionDate: ''
       },
 
       // --- ACTIONS DE BASE ---
