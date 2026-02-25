@@ -1,20 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { get, set, del } from 'idb-keyval'; // Importation de IndexedDB
+import { get, set, del } from 'idb-keyval';
 
-// --- ADAPTATEUR INDEXEDDB POUR ZUSTAND ---
-// Cet objet permet à Zustand de parler à la base de données du navigateur
+// --- ADAPTATEUR INDEXEDDB ---
 const idbStorage = {
-  getItem: async (name) => {
-    const value = await get(name);
-    return value || null;
-  },
-  setItem: async (name, value) => {
-    await set(name, value);
-  },
-  removeItem: async (name) => {
-    await del(name);
-  },
+  getItem: async (name) => (await get(name)) || null,
+  setItem: async (name, value) => await set(name, value),
+  removeItem: async (name) => await del(name),
 };
 
 export const useInspectionStore = create(
@@ -97,7 +89,7 @@ export const useInspectionStore = create(
         logo: null
       },
 
-      // --- ACTIONS ---
+      // --- ACTIONS DE BASE ---
       setAuditorInfo: (info) => set((state) => ({
         auditorInfo: { ...state.auditorInfo, ...info }
       })),
@@ -128,15 +120,48 @@ export const useInspectionStore = create(
         }
       },
 
-      loadFromHistory: (entry) => set({
-        responses: entry.data.responses,
-        aiResults: entry.data.aiResults
-      }),
+      // --- TRANSFERT DE DONNÉES (IMPORT / EXPORT) ---
+      exportAudit: () => {
+        const state = get();
+        const dataToExport = {
+          responses: state.responses,
+          aiResults: state.aiResults,
+          auditorInfo: state.auditorInfo,
+          history: state.history,
+          exportDate: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(dataToExport)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Audit_${state.responses['nomination']?.value || 'export'}_${Date.now()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      },
 
-      deleteFromHistory: (id) => set((state) => ({
-        history: state.history.filter(item => item.id !== id)
-      })),
+      importAudit: (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const json = JSON.parse(e.target.result);
+            set({
+              responses: json.responses || {},
+              aiResults: json.aiResults || null,
+              auditorInfo: json.auditorInfo || get().auditorInfo,
+              history: json.history || get().history
+            });
+            alert("Données d'audit importées avec succès !");
+          } catch (err) {
+            console.error("Erreur import:", err);
+            alert("Erreur : Le fichier JSON est invalide ou corrompu.");
+          }
+        };
+        reader.readAsText(file);
+      },
 
+      // --- PHOTOS (OPTIMISÉ POUR UPLOAD) ---
       addPhoto: (qId, photoData) => set((state) => ({
         responses: {
           ...state.responses,
@@ -157,6 +182,16 @@ export const useInspectionStore = create(
         }
       })),
 
+      // --- HISTORIQUE & CONFIG ---
+      loadFromHistory: (entry) => set({
+        responses: entry.data.responses,
+        aiResults: entry.data.aiResults
+      }),
+
+      deleteFromHistory: (id) => set((state) => ({
+        history: state.history.filter(item => item.id !== id)
+      })),
+
       addSection: (title) => set((state) => ({
         questionsConfig: [...state.questionsConfig, { title: title, questions: [] }]
       })),
@@ -171,8 +206,8 @@ export const useInspectionStore = create(
       resetAudit: () => set({ responses: {}, aiResults: null })
     }),
     {
-      name: 'risk-audit-storage-large', // Changement de nom pour éviter les conflits avec le LocalStorage
-      storage: createJSONStorage(() => idbStorage), // Utilisation du nouvel adaptateur
+      name: 'risk-audit-storage-large',
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );
