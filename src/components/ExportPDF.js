@@ -201,7 +201,55 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
         if ((idx + 1) % 2 === 0) { pX = 20; pY += 75; } else { pX = 110; }
       });
     }
+// --- 7. SECTION SIGNATURES ---
+    doc.addPage();
+    doc.setTextColor(...COLORS.CIAR_BLUE);
+    doc.setFontSize(14); doc.setFont(FONT, 'bold');
+    doc.text("6. VALIDATION ET SIGNATURES", 20, 25);
 
+    // Bloc Avis Final
+    doc.setFillColor(...COLORS.SOFT_BG);
+    doc.roundedRect(20, 35, 170, 40, 3, 3, 'F');
+    doc.setFontSize(10); doc.setTextColor(...COLORS.CIAR_BLUE);
+    doc.text("AVIS FINAL DU SOUSCRIPTEUR :", 25, 45);
+    
+    // On dessine des lignes pour une saisie manuelle si besoin ou on laisse vide
+    doc.setDrawColor(...COLORS.STEEL);
+    doc.setLineWidth(0.1);
+    doc.line(25, 55, 180, 55);
+    doc.line(25, 65, 180, 65);
+
+    // Zones de signatures
+    const signatureY = 100;
+    
+    // Expert
+    doc.setFontSize(10); doc.setTextColor(...COLORS.CIAR_BLUE);
+    doc.text("L'EXPERT CHARGÉ D'AUDIT", 20, signatureY);
+    doc.setFont(FONT, 'normal'); doc.setTextColor(...COLORS.TEXT);
+    doc.text(auditorInfo?.name || "Expert RiskPro", 20, signatureY + 7);
+    
+    doc.setDrawColor(...COLORS.CIAR_BLUE);
+    doc.rect(20, signatureY + 12, 75, 40); // Cadre signature expert
+    doc.setFontSize(7); doc.setTextColor(...COLORS.STEEL);
+    doc.text("Cachet et signature", 25, signatureY + 50);
+
+    // Représentant Site
+    doc.setFontSize(10); doc.setTextColor(...COLORS.CIAR_BLUE); doc.setFont(FONT, 'bold');
+    doc.text("LE REPRÉSENTANT DU SITE", 115, signatureY);
+    doc.setFont(FONT, 'normal'); doc.setTextColor(...COLORS.TEXT);
+    doc.text("Bon pour accord et constatations", 115, signatureY + 7);
+
+    doc.setDrawColor(...COLORS.STEEL);
+    doc.rect(115, signatureY + 12, 75, 40); // Cadre signature client
+    doc.setFontSize(7); doc.setTextColor(...COLORS.STEEL);
+    doc.text("Nom et signature du responsable", 120, signatureY + 50);
+
+    // Mention légale CIAR en fin de page
+    doc.setFontSize(8); doc.setFont(FONT, 'italic');
+    const legalText = "Ce rapport d'expertise est un document technique destiné à la souscription. Il ne vaut pas engagement de garantie de la Compagnie sans validation formelle des services de production.";
+    const splitLegal = doc.splitTextToSize(legalText, 160);
+    doc.text(splitLegal, 20, signatureY + 80);
+    
     // --- PIED DE PAGE ---
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -210,7 +258,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
       doc.line(20, 282, 190, 282);
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.STEEL);
-      doc.text(`Compagnie Internationale d'Assurance et de Réassurance - Expertise Risques IARD`, 20, 288);
+      doc.text(`Document Confidentiel - Expertise Risques IARD`, 20, 288);
       doc.text(`Page ${i} / ${pageCount}`, 190, 288, { align: 'right' });
     }
 
