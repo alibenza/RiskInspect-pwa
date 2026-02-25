@@ -91,7 +91,7 @@ const AIAnalysis = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer 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' 
+          'Authorization': 'Bearer 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' 
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
