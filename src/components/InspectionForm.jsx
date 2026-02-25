@@ -12,8 +12,10 @@ import {
   ChevronUp,
   CheckCircle2,
   RefreshCcw,
-  UploadCloud, // Nouvelle icône
-  DownloadCloud // Nouvelle icône
+  UploadCloud,
+  DownloadCloud,
+  Calendar, // Ajoutée
+  User as UserIcon // Ajoutée
 } from 'lucide-react';
 
 const InspectionForm = () => {
@@ -26,8 +28,9 @@ const InspectionForm = () => {
     addPhoto, 
     removePhoto,
     resetAudit,
-    exportAudit, // Action ajoutée
-    importAudit  // Action ajoutée
+    exportAudit,
+    importAudit,
+    auditorInfo // Récupération des infos de l'expert
   } = useInspectionStore();
 
   const [openSections, setOpenSections] = useState({ 0: true });
@@ -76,7 +79,7 @@ const InspectionForm = () => {
     <div className="space-y-4 pb-40 animate-in fade-in duration-500">
       
       {/* BARRE DE TRANSFERT (IMPORT/EXPORT) */}
-      <div className="grid grid-cols-2 gap-3 px-2 mb-6">
+      <div className="grid grid-cols-2 gap-3 px-2 mb-2">
         <button 
           onClick={exportAudit}
           className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95"
@@ -96,6 +99,28 @@ const InspectionForm = () => {
           />
         </label>
       </div>
+
+      {/* BANDEAU RÉCAPITULATIF DE LA SESSION */}
+      {(auditorInfo?.name || auditorInfo?.inspectionDate) && (
+        <div className="mx-2 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex flex-wrap gap-4 items-center">
+          {auditorInfo?.inspectionDate && (
+            <div className="flex items-center gap-2">
+              <Calendar size={14} className="text-indigo-500" />
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">
+                Visite du : {new Date(auditorInfo.inspectionDate).toLocaleDateString('fr-FR')}
+              </span>
+            </div>
+          )}
+          {auditorInfo?.name && (
+            <div className="flex items-center gap-2">
+              <UserIcon size={14} className="text-indigo-500" />
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">
+                Expert : {auditorInfo.name}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* BOUTON RESET RAPIDE */}
       <div className="flex justify-end px-2">
