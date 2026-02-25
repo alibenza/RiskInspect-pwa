@@ -91,7 +91,7 @@ const AIAnalysis = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer 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' 
+          'Authorization': 'Bearer ${import.meta.env.VITE_GROQ_API_KEY}' 
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
