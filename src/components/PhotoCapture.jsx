@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Loader2, Images } from 'lucide-react';
+import { Upload, Loader2, ImagePlus } from 'lucide-react';
 
 const PhotoCapture = ({ qId, onCapture }) => {
   const [loading, setLoading] = useState(false);
@@ -114,7 +114,7 @@ const PhotoCapture = ({ qId, onCapture }) => {
         {loading ? (
           <Loader2 className="animate-spin" size={18} />
         ) : (
-          <Images size={18} />
+          < ImagePlus size={18} />
         )}
         {loading 
           ? `Traitement en cours... (${progress.current}/${progress.total})` 
