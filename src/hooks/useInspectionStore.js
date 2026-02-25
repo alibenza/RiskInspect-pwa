@@ -86,7 +86,7 @@ export const useInspectionStore = create(
       auditorInfo: {
         name: '',
         company: '',
-        logo: null
+        logo: null,
         inspectionDate: ''
       },
 
