@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 import { 
-  BrainCircuit, Loader2, ShieldCheck, Target, ChevronDown, FileDown, Zap, AlertTriangle, Info
+  BrainCircuit, Loader2, ShieldCheck, Target, ChevronDown, FileDown, Zap, AlertTriangle, Info, BarChart3
 } from 'lucide-react';
 import { exportToPdf } from './ExportPDF';
 
@@ -10,6 +10,10 @@ const AIAnalysis = () => {
   
   const [loading, setLoading] = useState(false);
   const [selectedGaranties, setSelectedGaranties] = useState(['Incendie_explosion', 'Bris_De_Machine', 'RC']);
+  
+  // Nouveaux paramètres d'analyse
+  const [expertSatisfaction, setExpertSatisfaction] = useState(80);
+  const [severity, setSeverity] = useState('Moyenne');
 
   const garantiesLib = [
     { id: 'Incendie_explosion', label: 'Incendie & Explosion' },
@@ -45,16 +49,22 @@ const AIAnalysis = () => {
         };
       }).filter(Boolean);
 
+      // Prompt mis à jour avec Satisfaction et Sévérité
       const promptStrict = `
         Tu es un Ingénieur Souscripteur Senior en Risques Industriels (Expert IARD Algérie).
+        
+        PARAMÈTRES CRITIQUES :
+        - SÉVÉRITÉ DE L'ANALYSE : ${severity.toUpperCase()}
+        - SATISFACTION GLOBALE DE L'EXPERT : ${expertSatisfaction}%
+
         Analyse le site : ${nomination} (${natureActivite}).
         Garanties : ${nomsGarantiesCochees}.
         Données d'audit : ${JSON.stringify(allQuestionsData)}
 
         MISSIONS :
-        1. ANALYSE TECHNIQUE : Évalue la vulnérabilité du site.
+        1. ANALYSE TECHNIQUE : Évalue la vulnérabilité selon le niveau de sévérité choisi.
         2. NAT-CAT : Spécificités Algérie (Zones CRAAG, RPA, risques inondations locaux).
-        3. DÉCISIONNEL : Justifie l'acceptabilité du risque.
+        3. DÉCISIONNEL : Justifie l'acceptabilité en tenant compte du ressenti expert (${expertSatisfaction}%).
         4. PRÉVENTION : Mesures impératives.
 
         REPONDRE UNIQUEMENT EN JSON :
@@ -77,7 +87,6 @@ const AIAnalysis = () => {
           ]
         }`;
 
-      // --- CORRECTION : AJOUT DU FETCH MANQUANT ---
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: 'POST',
         headers: { 
@@ -135,27 +144,74 @@ const AIAnalysis = () => {
       </div>
 
       {!aiResults ? (
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-          <div className="flex justify-between items-center">
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
+          
+          {/* CONFIGURATION DE L'ANALYSE (LES DEUX CURSEURS) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+            {/* Satisfaction Expert */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                  <BarChart3 size={14} className="text-indigo-500" /> Satisfaction Expert
+                </label>
+                <span className="text-sm font-black text-indigo-600 bg-white px-3 py-1 rounded-full border shadow-sm">
+                  {expertSatisfaction}%
+                </span>
+              </div>
+              <input 
+                type="range" min="0" max="100" step="5"
+                value={expertSatisfaction}
+                onChange={(e) => setExpertSatisfaction(e.target.value)}
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+              <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
+                <span>Critique</span>
+                <span>Excellent</span>
+              </div>
+            </div>
+
+            {/* Sévérité */}
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                <Target size={14} className="text-indigo-500" /> Sévérité de l'Analyse
+              </label>
+              <div className="flex gap-2">
+                {['Légère', 'Moyenne', 'Sévère'].map((lvl) => (
+                  <button
+                    key={lvl}
+                    onClick={() => setSeverity(lvl)}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
+                      severity === lvl 
+                      ? 'bg-slate-900 text-white shadow-md' 
+                      : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-200'
+                    }`}
+                  >
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
             <h3 className="font-black text-xs uppercase text-slate-400 tracking-widest flex items-center gap-2">
               <ShieldCheck size={14} /> Périmètre de l'expertise
             </h3>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {garantiesLib.map(g => (
-              <button 
-                key={g.id} 
-                onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])}
-                className={`p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all ${
-                  selectedGaranties.includes(g.id) 
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
-                  : 'border-slate-50 bg-slate-50 text-slate-400'
-                }`}
-              >
-                {g.label}
-              </button>
-            ))}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {garantiesLib.map(g => (
+                <button 
+                  key={g.id} 
+                  onClick={() => setSelectedGaranties(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id])}
+                  className={`p-4 rounded-2xl border-2 text-[10px] font-black uppercase transition-all ${
+                    selectedGaranties.includes(g.id) 
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
+                    : 'border-slate-50 bg-slate-50 text-slate-400'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button 
