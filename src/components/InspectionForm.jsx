@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 import PhotoCapture from './PhotoCapture';
-import AIRedesignButton from '../utils/AIRedesignButton'; // Import du bouton IA
+import AIRedesignButton from '../utils/AIRedesignButton';
 import { 
   MessageSquareText, 
   AlertCircle, 
@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  RefreshCcw
+  RefreshCcw,
+  UploadCloud, // Nouvelle icône
+  DownloadCloud // Nouvelle icône
 } from 'lucide-react';
 
 const InspectionForm = () => {
@@ -23,7 +25,9 @@ const InspectionForm = () => {
     addQuestion,
     addPhoto, 
     removePhoto,
-    resetAudit 
+    resetAudit,
+    exportAudit, // Action ajoutée
+    importAudit  // Action ajoutée
   } = useInspectionStore();
 
   const [openSections, setOpenSections] = useState({ 0: true });
@@ -71,6 +75,28 @@ const InspectionForm = () => {
   return (
     <div className="space-y-4 pb-40 animate-in fade-in duration-500">
       
+      {/* BARRE DE TRANSFERT (IMPORT/EXPORT) */}
+      <div className="grid grid-cols-2 gap-3 px-2 mb-6">
+        <button 
+          onClick={exportAudit}
+          className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+        >
+          <UploadCloud size={16} className="text-indigo-500" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">Exporter JSON</span>
+        </button>
+
+        <label className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95 cursor-pointer">
+          <DownloadCloud size={16} className="text-emerald-500" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">Importer JSON</span>
+          <input 
+            type="file" 
+            accept=".json" 
+            className="hidden" 
+            onChange={(e) => importAudit(e.target.files[0])} 
+          />
+        </label>
+      </div>
+
       {/* BOUTON RESET RAPIDE */}
       <div className="flex justify-end px-2">
         <button 
@@ -138,14 +164,12 @@ const InspectionForm = () => {
                       />
                     )}
 
-                    {/* ZONE OBSERVATION AVEC BOUTON IA */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-end px-1">
                         <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
                           <MessageSquareText size={10} /> Observations
                         </span>
                         
-                        {/* INJECTION DU BOUTON IA */}
                         <AIRedesignButton 
                           currentText={responses[q.id]?.comment} 
                           onUpdate={(newText) => handleCommentChange(q.id, newText)}
@@ -162,7 +186,6 @@ const InspectionForm = () => {
                       </div>
                     </div>
 
-                    {/* SECTION PHOTO */}
                     <div className="pt-2 space-y-3">
                       <PhotoCapture 
                         qId={q.id} 
