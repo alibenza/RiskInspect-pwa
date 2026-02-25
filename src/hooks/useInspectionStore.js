@@ -122,6 +122,7 @@ export const useInspectionStore = create(
 
       // --- TRANSFERT DE DONNÉES (IMPORT / EXPORT) ---
       exportAudit: () => {
+        const fileName = `AUDIT_${client}_${date}_${auditeur}.json`;
         const state = get();
         const dataToExport = {
           responses: state.responses,
