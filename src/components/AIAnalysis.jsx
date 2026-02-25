@@ -65,7 +65,7 @@ const AIAnalysis = () => {
         1. ANALYSE TECHNIQUE : Évalue la vulnérabilité selon le niveau de sévérité choisi.
         2. NAT-CAT : Spécificités Algérie (Zones CRAAG, RPA, risques inondations locaux).
         3. DÉCISIONNEL : Justifie l'acceptabilité en tenant compte du ressenti expert (${expertSatisfaction}%).
-        4. PRÉVENTION : Mesures impératives.
+        4. PRÉVENTION : Mesures d'améliorations SMART.
 
         REPONDRE UNIQUEMENT EN JSON :
         {
