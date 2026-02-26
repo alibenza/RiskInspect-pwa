@@ -121,26 +121,38 @@ export const useInspectionStore = create(
         }
       },
 
-      // --- TRANSFERT DE DONNÉES (IMPORT / EXPORT) ---
-      exportAudit: () => {
-        const fileName = `AUDIT_${client}_${date}_${auditeur}.json`;
-        const state = get();
-        const dataToExport = {
-          responses: state.responses,
-          aiResults: state.aiResults,
-          auditorInfo: state.auditorInfo,
-          history: state.history,
-          exportDate: new Date().toISOString()
-        };
-        
-        const blob = new Blob([JSON.stringify(dataToExport)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Audit_${state.responses['nomination']?.value || 'export'}_${Date.now()}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-      },
+exportAudit: () => {
+  const state = get();
+  
+  // On extrait proprement le nom pour le fichier
+  const clientName = state.responses['nomination']?.value || 'SANS_NOM';
+  const dateStr = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+  
+  const dataToExport = {
+    responses: state.responses,
+    aiResults: state.aiResults,
+    auditorInfo: state.auditorInfo,
+    history: state.history,
+    exportDate: new Date().toISOString()
+  };
+  
+  try {
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `AUDIT_${clientName.replace(/\s+/g, '_')}_${dateStr}.json`;
+    
+    // Ajout impératif au DOM pour certains navigateurs (Safari/Mobile)
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Erreur lors de l'export JSON:", error);
+  }
+},
 
       importAudit: (file) => {
         if (!file) return;
