@@ -80,12 +80,13 @@ const InspectionForm = () => {
       
       {/* BARRE DE TRANSFERT (IMPORT/EXPORT) */}
       <div className="grid grid-cols-2 gap-3 px-2 mb-2">
-        <button 
-          onClick={exportAudit}
-          className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+        <button
+          type="button" // Empêche la soumission accidentelle du formulaire
+          onClick={() => exportAudit()}
+          className="flex items-center gap-2 px-6 py-3 bg-slate-800 text-white rounded-xl font-bold text-xs uppercase hover:bg-slate-700 transition-all shadow-lg"
         >
-          <UploadCloud size={16} className="text-indigo-500" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">Exporter JSON</span>
+          <FileJson size={16} /> {/* Assure-toi d'avoir importé FileJson de lucide-react */}
+          Exporter l'Audit (.json)
         </button>
 
         <label className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95 cursor-pointer">
