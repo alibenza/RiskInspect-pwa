@@ -1,7 +1,7 @@
 {
-  "name": "RiskInspect AI - Expertise CIAR",
+  "name": "RiskInspect AI ",
   "short_name": "RiskInspect",
-  "description": "Plateforme d'audit et d'expertise des risques industriels IARD pour la CIAR",
+  "description": "Plateforme d'audit et d'expertise des risques industriels IARD ",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
