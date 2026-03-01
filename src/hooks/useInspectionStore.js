@@ -79,6 +79,13 @@ export const useInspectionStore = create(
         }
       ],
 
+      // --- ETAT MULTI-SITES ---
+      activeSiteId: 'Site_Initial',
+      allSites: {
+        'Site_Initial': { name: 'Site Principal', responses: {}, aiResults: null }
+      },
+
+      // --- ETAT COMPATIBILITÉ (POUR TES COMPOSANTS ACTUELS) ---
       responses: {},
       aiResults: null,
       history: [],
@@ -89,6 +96,43 @@ export const useInspectionStore = create(
         logo: null,
         inspectionDate: ''
       },
+
+      // --- ACTIONS MULTI-SITES ---
+      switchSite: (siteId, name = null) => set((state) => {
+        // 1. Sauvegarder l'état actuel du site sortant dans allSites
+        const updatedAllSites = { ...state.allSites };
+        updatedAllSites[state.activeSiteId] = {
+          ...updatedAllSites[state.activeSiteId],
+          responses: state.responses,
+          aiResults: state.aiResults
+        };
+
+        // 2. Préparer ou charger le site entrant
+        const targetSite = updatedAllSites[siteId] || { 
+          name: name || siteId, 
+          responses: {}, 
+          aiResults: null 
+        };
+
+        return {
+          activeSiteId: siteId,
+          allSites: { ...updatedAllSites, [siteId]: targetSite },
+          responses: targetSite.responses,
+          aiResults: targetSite.aiResults
+        };
+      }),
+
+      deleteSite: (siteId) => set((state) => {
+        if (Object.keys(state.allSites).length <= 1) return state;
+        const { [siteId]: removed, ...remainingSites } = state.allSites;
+        const nextSiteId = Object.keys(remainingSites)[0];
+        return {
+          allSites: remainingSites,
+          activeSiteId: nextSiteId,
+          responses: remainingSites[nextSiteId].responses,
+          aiResults: remainingSites[nextSiteId].aiResults
+        };
+      }),
 
       // --- ACTIONS DE BASE ---
       setAuditorInfo: (info) => set((state) => ({
@@ -121,38 +165,35 @@ export const useInspectionStore = create(
         }
       },
 
-exportAudit: () => {
-  const state = get();
-  
-  // On extrait proprement le nom pour le fichier
-  const clientName = state.responses['nomination']?.value || 'SANS_NOM';
-  const dateStr = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-  
-  const dataToExport = {
-    responses: state.responses,
-    aiResults: state.aiResults,
-    auditorInfo: state.auditorInfo,
-    history: state.history,
-    exportDate: new Date().toISOString()
-  };
-  
-  try {
-    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `AUDIT_${clientName.replace(/\s+/g, '_')}_${dateStr}.json`;
-    
-    // Ajout impératif au DOM pour certains navigateurs (Safari/Mobile)
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("Erreur lors de l'export JSON:", error);
-  }
-},
+      exportAudit: () => {
+        const state = get();
+        const clientName = state.responses['nomination']?.value || 'SANS_NOM';
+        const dateStr = new Date().toISOString().split('T')[0];
+        
+        const dataToExport = {
+          allSites: state.allSites, // On exporte TOUS les sites
+          activeSiteId: state.activeSiteId,
+          responses: state.responses,
+          aiResults: state.aiResults,
+          auditorInfo: state.auditorInfo,
+          history: state.history,
+          exportDate: new Date().toISOString()
+        };
+        
+        try {
+          const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `AUDIT_GLOBAL_${clientName.replace(/\s+/g, '_')}_${dateStr}.json`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error("Erreur lors de l'export JSON:", error);
+        }
+      },
 
       importAudit: (file) => {
         if (!file) return;
@@ -161,12 +202,14 @@ exportAudit: () => {
           try {
             const json = JSON.parse(e.target.result);
             set({
+              allSites: json.allSites || { 'Import': { name: 'Import', responses: json.responses, aiResults: json.aiResults }},
+              activeSiteId: json.activeSiteId || 'Import',
               responses: json.responses || {},
               aiResults: json.aiResults || null,
               auditorInfo: json.auditorInfo || get().auditorInfo,
               history: json.history || get().history
             });
-            alert("Données d'audit importées avec succès !");
+            alert("Données multi-sites importées avec succès !");
           } catch (err) {
             console.error("Erreur import:", err);
             alert("Erreur : Le fichier JSON est invalide ou corrompu.");
@@ -175,7 +218,6 @@ exportAudit: () => {
         reader.readAsText(file);
       },
 
-      // --- PHOTOS (OPTIMISÉ POUR UPLOAD) ---
       addPhoto: (qId, photoData) => set((state) => ({
         responses: {
           ...state.responses,
@@ -196,7 +238,6 @@ exportAudit: () => {
         }
       })),
 
-      // --- HISTORIQUE & CONFIG ---
       loadFromHistory: (entry) => set({
         responses: entry.data.responses,
         aiResults: entry.data.aiResults
