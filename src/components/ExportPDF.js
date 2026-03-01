@@ -34,7 +34,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
     doc.setTextColor(...COLORS.CIAR_BLUE);
     doc.setFont(FONT, 'bold');
     doc.setFontSize(28);
-    doc.text("RAPPORT D'EXPERTISE", 25, 80);
+    doc.text("RAPPORT DE VISITE DE RISQUE", 25, 80);
     
     doc.setTextColor(...COLORS.CIAR_RED);
     doc.setFontSize(24);
@@ -258,11 +258,11 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
       doc.line(20, 282, 190, 282);
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.STEEL);
-      doc.text(`Document Confidentiel - Expertise Risques IARD`, 20, 288);
+      doc.text(`Document Confidentiel - Visite de Risque IARD`, 20, 288);
       doc.text(`Page ${i} / ${pageCount}`, 190, 288, { align: 'right' });
     }
 
-    doc.save(`Expertise_CIAR_${clientName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Expertise_${clientName.replace(/\s+/g, '_')}.pdf`);
   } catch (error) {
     console.error("Erreur Export PDF:", error);
     alert("Erreur lors de la génération du PDF.");
