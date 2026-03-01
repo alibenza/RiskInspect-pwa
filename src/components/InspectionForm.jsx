@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   RefreshCcw,
   UploadCloud,
+  FileJson, // <-- AJOUTE-LE ICI
+  ClipboardList,
+  Camera,
   DownloadCloud,
   Calendar, // Ajoutée
   User as UserIcon // Ajoutée
