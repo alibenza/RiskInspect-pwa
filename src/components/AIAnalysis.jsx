@@ -11,17 +11,19 @@ import {
   AlertTriangle, 
   Info, 
   BarChart3,
-  FileJson // <-- INDISPENSABLE POUR TON BOUTON EXPORT
+  FileJson,
+  Building2, // Ajouté
+  Layers // Ajouté
 } from 'lucide-react';
 import { exportToPdf } from './ExportPDF';
 
 const AIAnalysis = () => {
-  const { responses, questionsConfig, aiResults, setAiResults, auditorInfo } = useInspectionStore();
+  // Récupération de allSites pour l'analyse globale
+  const { allSites, responses, questionsConfig, aiResults, setAiResults, auditorInfo } = useInspectionStore();
   
   const [loading, setLoading] = useState(false);
   const [selectedGaranties, setSelectedGaranties] = useState(['Incendie_explosion', 'Bris_De_Machine', 'RC']);
   
-  // Nouveaux paramètres d'analyse
   const [expertSatisfaction, setExpertSatisfaction] = useState(80);
   const [severity, setSeverity] = useState('Moyenne');
 
@@ -42,45 +44,49 @@ const AIAnalysis = () => {
     setLoading(true);
 
     try {
-      const nomination = responses?.nomination?.value || "Site Industriel";
-      const natureActivite = responses?.activite_nature?.value || "Non spécifiée";
+      const nomination = responses?.nomination?.value || "Entreprise Multi-sites";
       
+      // --- PRÉPARATION DES DONNÉES MULTI-SITES ---
+      const multiSiteData = Object.entries(allSites).map(([id, site]) => {
+        const siteResponses = Object.keys(site.responses || {}).map(qId => {
+          const q = questionsConfig?.flatMap(s => s.questions).find(qu => qu.id === qId);
+          if (!q) return null;
+          return {
+            label: q.label,
+            val: site.responses[qId].value || (site.responses[qId].score + '/5'),
+            obs: site.responses[qId].comment || 'RAS'
+          };
+        }).filter(Boolean);
+
+        return {
+          siteName: site.name,
+          data: siteResponses
+        };
+      });
+
       const nomsGarantiesCochees = selectedGaranties.map(id => 
         garantiesLib.find(g => g.id === id)?.label
       ).join(", ");
 
-      const allQuestionsData = Object.keys(responses || {}).map(id => {
-        const q = questionsConfig?.flatMap(s => s.questions).find(qu => qu.id === id);
-        if (!q) return null;
-        return { 
-          label: q.label, 
-          val: responses[id].value || (responses[id].score + '/5'), 
-          obs: responses[id].comment || 'RAS' 
-        };
-      }).filter(Boolean);
-
-      // Prompt mis à jour avec Satisfaction et Sévérité
       const promptStrict = `
         Tu es un Ingénieur Souscripteur Senior en Risques Industriels (Expert IARD Algérie).
         
-        PARAMÈTRES CRITIQUES :
-        - SÉVÉRITÉ DE L'ANALYSE : ${severity.toUpperCase()}
-        - SATISFACTION GLOBALE DE L'EXPERT : ${expertSatisfaction}%
+        CONTEXTE : Analyse d'une entreprise assurée possédant ${multiSiteData.length} sites distincts.
+        PARAMÈTRES CRITIQUES : SÉVÉRITÉ ${severity.toUpperCase()}, SATISFACTION GLOBALE ${expertSatisfaction}%.
 
-        Analyse le site : ${nomination} (${natureActivite}).
-        Garanties : ${nomsGarantiesCochees}.
-        Données d'audit : ${JSON.stringify(allQuestionsData)}
+        DONNÉES MULTI-SITES : ${JSON.stringify(multiSiteData)}
+        Garanties à analyser : ${nomsGarantiesCochees}.
 
         MISSIONS :
-        1. ANALYSE TECHNIQUE : Évalue la vulnérabilité selon le niveau de sévérité choisi.
-        2. NAT-CAT : Spécificités Algérie (Zones CRAAG, RPA, risques inondations locaux).
-        3. DÉCISIONNEL : Justifie l'acceptabilité en tenant compte du ressenti expert (${expertSatisfaction}%).
-        4. PRÉVENTION : Mesures d'améliorations SMART.
+        1. SYNTHÈSE CORPORATE : Compare les sites entre eux. Identifie le site le plus vulnérable.
+        2. ANALYSE NAT-CAT : Risques transversaux en Algérie (Sismicité, Inondations) impactant le groupe.
+        3. DÉCISIONNEL : Établis un score global consolidé basé sur la moyenne pondérée des sites et ton ressenti (${expertSatisfaction}%).
+        4. PRÉVENTION : Plan d'action prioritaire pour homogénéiser la sécurité sur tous les sites.
 
         REPONDRE UNIQUEMENT EN JSON :
         {
           "score_global": 0-100,
-          "synthese_executive": "...",
+          "synthese_executive": "Analyse comparative globale...",
           "analyse_nat_cat": {
             "exposition_sismique": "...",
             "exposition_hydrologique": "...",
@@ -91,8 +97,8 @@ const AIAnalysis = () => {
             {
               "garantie": "Nom",
               "exposition": 1-10,
-              "avis_technique": "...",
-              "recommandations": ["..."]
+              "avis_technique": "Avis consolidé pour le groupe...",
+              "recommandations": ["Mesure site A", "Mesure site B", "Mesure Groupe"]
             }
           ]
         }`;
@@ -101,12 +107,12 @@ const AIAnalysis = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': 'Bearer ${import.meta.env.VITE_GROQ_API_KEY}' 
+          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}` 
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: "Expert IARD Algérie. JSON uniquement." },
+            { role: "system", content: "Expert IARD Algérie. Analyse Multi-sites. JSON uniquement." },
             { role: "user", content: promptStrict }
           ],
           response_format: { type: "json_object" },
@@ -138,8 +144,8 @@ const AIAnalysis = () => {
             <BrainCircuit size={28} />
           </div>
           <div>
-            <h2 className="text-2xl font-black tracking-tighter uppercase italic">RiskPro AI</h2>
-            <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Expertise Risques Industriels</p>
+            <h2 className="text-2xl font-black tracking-tighter uppercase italic">RiskPro AI <span className="text-indigo-400">Corporate</span></h2>
+            <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest italic">Analyse Consolidée Multi-Sites</p>
           </div>
         </div>
 
@@ -148,7 +154,7 @@ const AIAnalysis = () => {
             onClick={() => exportToPdf(responses, questionsConfig, aiResults, auditorInfo)}
             className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase transition-all shadow-lg"
           >
-            <FileDown size={18} /> Télécharger Rapport PDF
+            <FileDown size={18} /> Rapport Global PDF
           </button>
         )}
       </div>
@@ -156,9 +162,16 @@ const AIAnalysis = () => {
       {!aiResults ? (
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
           
-          {/* CONFIGURATION DE L'ANALYSE (LES DEUX CURSEURS) */}
+          {/* INFO BULLE MULTI-SITES */}
+          <div className="flex items-center gap-4 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+            <Layers className="text-indigo-600" size={24} />
+            <p className="text-[11px] font-bold text-indigo-900 uppercase">
+              L'analyse portera sur <span className="text-indigo-600 underline">{Object.keys(allSites).length} site(s)</span> actuellement enregistrés.
+            </p>
+          </div>
+
+          {/* CONFIGURATION DE L'ANALYSE */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-            {/* Satisfaction Expert */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
@@ -174,13 +187,8 @@ const AIAnalysis = () => {
                 onChange={(e) => setExpertSatisfaction(e.target.value)}
                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
               />
-              <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
-                <span>Critique</span>
-                <span>Excellent</span>
-              </div>
             </div>
 
-            {/* Sévérité */}
             <div className="space-y-4">
               <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
                 <Target size={14} className="text-indigo-500" /> Sévérité de l'Analyse
@@ -205,7 +213,7 @@ const AIAnalysis = () => {
 
           <div className="space-y-4">
             <h3 className="font-black text-xs uppercase text-slate-400 tracking-widest flex items-center gap-2">
-              <ShieldCheck size={14} /> Périmètre de l'expertise
+              <ShieldCheck size={14} /> Garanties souscription
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {garantiesLib.map(g => (
@@ -230,56 +238,57 @@ const AIAnalysis = () => {
             className="w-full py-6 bg-slate-900 hover:bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl"
           >
             {loading ? (
-              <><Loader2 className="animate-spin" /><span>Analyse en cours...</span></>
+              <><Loader2 className="animate-spin" /><span>Analyse comparative en cours...</span></>
             ) : (
-              <><Zap size={20} fill="currentColor" /><span>Générer l'expertise complète</span></>
+              <><Zap size={20} fill="currentColor" /><span>Générer l'expertise Corporate</span></>
             )}
           </button>
         </div>
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
-          {/* SCORE GLOBAL */}
+          {/* SCORE GLOBAL CONSOLIDÉ */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-center items-center shadow-xl border-b-8 border-indigo-500">
               <span className="text-6xl font-black">{aiResults?.score_global}%</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mt-2">Maîtrise du Risque</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mt-2">Moyenne Groupe</span>
             </div>
             <div className="md:col-span-3 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center">
               <p className="text-slate-600 italic leading-relaxed text-sm">
-                <Info className="inline mr-2 text-indigo-500" size={16} />
+                <Building2 className="inline mr-2 text-indigo-500" size={18} />
+                <span className="font-black text-indigo-600 not-italic mr-2">SYNTHÈSE MULTI-SITES :</span>
                 {aiResults?.synthese_executive}
               </p>
             </div>
           </div>
 
-          {/* ANALYSE PAR GARANTIE */}
+          {/* ANALYSE PAR GARANTIE (VERSION GROUPE) */}
           <div className="grid grid-cols-1 gap-6">
             {aiResults?.analyses_par_garantie?.map((gar, idx) => (
               <div key={idx} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 px-8 py-4 border-b border-slate-100 flex justify-between items-center">
                   <h4 className="font-black text-xs uppercase text-slate-700 tracking-wider">{gar.garantie}</h4>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Exposition</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Exposition Moyenne</span>
                     <span className="px-3 py-1 bg-white border rounded-full text-xs font-black text-indigo-600">{gar.exposition}/10</span>
                   </div>
                 </div>
                 
                 <div className="p-8 space-y-6">
                   <div>
-                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-2">Avis de l'Expert</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">{gar.avis_technique}</p>
+                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-2 italic">Avis Technique Consolidé</p>
+                    <p className="text-sm text-slate-600 leading-relaxed font-medium">{gar.avis_technique}</p>
                   </div>
 
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-rose-400 uppercase mb-2 flex items-center gap-2">
-                      <AlertTriangle size={12} /> Mesures de prévention
+                      <AlertTriangle size={12} /> Plan d'action Groupe
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {gar.recommandations?.map((rec, i) => (
-                        <div key={i} className="flex gap-3 items-start p-3 bg-slate-50 rounded-xl">
+                        <div key={i} className="flex gap-3 items-start p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
-                          <p className="text-[11px] font-medium text-slate-700">{rec}</p>
+                          <p className="text-[11px] font-medium text-slate-700 leading-tight">{rec}</p>
                         </div>
                       ))}
                     </div>
@@ -293,7 +302,7 @@ const AIAnalysis = () => {
             onClick={() => setAiResults(null)}
             className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold uppercase text-[10px] hover:bg-slate-50 transition-all"
           >
-            Nouvelle analyse
+            Nouvelle analyse Groupe
           </button>
         </div>
       )}
