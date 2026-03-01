@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 import { 
-  BrainCircuit, Loader2, ShieldCheck, Target, ChevronDown, FileDown, Zap, AlertTriangle, Info, BarChart3
+  BrainCircuit, 
+  Loader2, 
+  ShieldCheck, 
+  Target, 
+  ChevronDown, 
+  FileDown, 
+  Zap, 
+  AlertTriangle, 
+  Info, 
+  BarChart3,
+  FileJson // <-- INDISPENSABLE POUR TON BOUTON EXPORT
 } from 'lucide-react';
 import { exportToPdf } from './ExportPDF';
 
