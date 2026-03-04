@@ -12,7 +12,7 @@ const idbStorage = {
 export const useInspectionStore = create(
   persist(
     (set, get) => ({
-      // --- CONFIGURATION INITIALE ---
+      // --- CONFIGURATION INITIALE (Inchangée) ---
       questionsConfig: [
         {
           title: "Informations Générales",
@@ -82,13 +82,33 @@ export const useInspectionStore = create(
       // --- ETAT MULTI-SITES ---
       activeSiteId: 'Site_Initial',
       allSites: {
-        'Site_Initial': { name: 'Site Principal', responses: {}, aiResults: null }
+        'Site_Initial': { 
+            name: 'Site Principal', 
+            responses: {}, 
+            aiResults: null,
+            chatHistory: [], // Nouvel historique par site
+            smpData: { 
+                scenario: "", 
+                valeurs: { batiment: 0, materiel: 0, stocks: 0, pe: 0 },
+                hypotheses: [],
+                smpFinal: 0
+            } 
+        }
       },
 
-      // --- ETAT COMPATIBILITÉ (POUR TES COMPOSANTS ACTUELS) ---
+      // --- ETAT COMPATIBILITÉ ---
       responses: {},
       aiResults: null,
       history: [],
+      
+      // --- NOUVEAUX ETATS POUR CO-REDACTION ---
+      chatHistory: [],
+      smpData: {
+        scenario: "",
+        valeurs: { batiment: 0, materiel: 0, stocks: 0, pe: 0 },
+        hypotheses: [],
+        smpFinal: 0
+      },
 
       auditorInfo: {
         name: '',
@@ -97,44 +117,47 @@ export const useInspectionStore = create(
         inspectionDate: ''
       },
 
-      // --- ACTIONS MULTI-SITES ---
+      // --- ACTIONS MULTI-SITES (Mise à jour pour inclure Chat et SMP) ---
       switchSite: (siteId, name = null) => set((state) => {
-        // 1. Sauvegarder l'état actuel du site sortant dans allSites
         const updatedAllSites = { ...state.allSites };
         updatedAllSites[state.activeSiteId] = {
           ...updatedAllSites[state.activeSiteId],
           responses: state.responses,
-          aiResults: state.aiResults
+          aiResults: state.aiResults,
+          chatHistory: state.chatHistory,
+          smpData: state.smpData
         };
 
-        // 2. Préparer ou charger le site entrant
         const targetSite = updatedAllSites[siteId] || { 
           name: name || siteId, 
           responses: {}, 
-          aiResults: null 
+          aiResults: null,
+          chatHistory: [],
+          smpData: { scenario: "", valeurs: { batiment: 0, materiel: 0, stocks: 0, pe: 0 }, hypotheses: [], smpFinal: 0 }
         };
 
         return {
           activeSiteId: siteId,
           allSites: { ...updatedAllSites, [siteId]: targetSite },
           responses: targetSite.responses,
-          aiResults: targetSite.aiResults
+          aiResults: targetSite.aiResults,
+          chatHistory: targetSite.chatHistory || [],
+          smpData: targetSite.smpData || { scenario: "", valeurs: { batiment: 0, materiel: 0, stocks: 0, pe: 0 }, hypotheses: [], smpFinal: 0 }
         };
       }),
 
-      deleteSite: (siteId) => set((state) => {
-        if (Object.keys(state.allSites).length <= 1) return state;
-        const { [siteId]: removed, ...remainingSites } = state.allSites;
-        const nextSiteId = Object.keys(remainingSites)[0];
-        return {
-          allSites: remainingSites,
-          activeSiteId: nextSiteId,
-          responses: remainingSites[nextSiteId].responses,
-          aiResults: remainingSites[nextSiteId].aiResults
-        };
-      }),
+      // --- ACTIONS CO-REDACTION IA ---
+      addChatMessage: (message) => set((state) => ({
+        chatHistory: [...state.chatHistory, { ...message, timestamp: Date.now() }]
+      })),
 
-      // --- ACTIONS DE BASE ---
+      setSmpData: (newData) => set((state) => ({
+        smpData: { ...state.smpData, ...newData }
+      })),
+
+      clearChat: () => set({ chatHistory: [] }),
+
+      // --- ACTIONS DE BASE (Inchangées) ---
       setAuditorInfo: (info) => set((state) => ({
         auditorInfo: { ...state.auditorInfo, ...info }
       })),
@@ -171,10 +194,12 @@ export const useInspectionStore = create(
         const dateStr = new Date().toISOString().split('T')[0];
         
         const dataToExport = {
-          allSites: state.allSites, // On exporte TOUS les sites
+          allSites: state.allSites,
           activeSiteId: state.activeSiteId,
           responses: state.responses,
           aiResults: state.aiResults,
+          chatHistory: state.chatHistory,
+          smpData: state.smpData,
           auditorInfo: state.auditorInfo,
           history: state.history,
           exportDate: new Date().toISOString()
@@ -202,10 +227,12 @@ export const useInspectionStore = create(
           try {
             const json = JSON.parse(e.target.result);
             set({
-              allSites: json.allSites || { 'Import': { name: 'Import', responses: json.responses, aiResults: json.aiResults }},
+              allSites: json.allSites || { 'Import': { name: 'Import', responses: json.responses, aiResults: json.aiResults, chatHistory: [], smpData: {} }},
               activeSiteId: json.activeSiteId || 'Import',
               responses: json.responses || {},
               aiResults: json.aiResults || null,
+              chatHistory: json.chatHistory || [],
+              smpData: json.smpData || { scenario: "", valeurs: { batiment: 0, materiel: 0, stocks: 0, pe: 0 }, hypotheses: [], smpFinal: 0 },
               auditorInfo: json.auditorInfo || get().auditorInfo,
               history: json.history || get().history
             });
@@ -258,7 +285,7 @@ export const useInspectionStore = create(
         return { questionsConfig: newConfig };
       }),
 
-      resetAudit: () => set({ responses: {}, aiResults: null })
+      resetAudit: () => set({ responses: {}, aiResults: null, chatHistory: [], smpData: {} })
     }),
     {
       name: 'risk-audit-storage-large',
