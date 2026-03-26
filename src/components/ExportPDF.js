@@ -25,7 +25,10 @@ const ML  = 18;
 const MR  = 192;
 const CW  = MR - ML;
 
-const fmt = (n) => new Intl.NumberFormat('fr-DZ').format(n || 0) + ' DZD';
+const fmt = (n) => {
+  const rounded = Math.round(n || 0);
+  return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DZD';
+};
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
 const rgb    = (doc, col) => doc.setTextColor(...col);
@@ -68,7 +71,7 @@ const runningHeader = (doc, client, section = '') => {
 const runningFooter = (doc, page, total, client) => {
   hline(doc, PH - 12, ML, MR, C.RULE, 0.2);
   normal(doc, 6.5); rgb(doc, C.SUBTLE);
-  doc.text(`Confidentiel — ${client}`, ML, PH - 8);
+  doc.text(`Confidentiel — ${client}`, ML, PH - 8, { maxWidth: CW / 2 - 5 });
   doc.text(`Page ${page} / ${total}`, MR, PH - 8, { align: 'right' });
 };
 
@@ -104,7 +107,7 @@ const metricCard = (doc, x, y, w, h, label, value, sub, bg = C.NAVY, fg = C.WHIT
 export const exportToPdf = async (responses, questionsConfig, aiResults, auditorInfo) => {
   try {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const { allSites, smpData, chatHistory } = useInspectionStore.getState();
+    const { allSites, smpData } = useInspectionStore.getState();
     const client   = responses['nomination']?.value     || 'Entreprise Assurée';
     const adresse  = responses['adress']?.value         || '';
     const activite = responses['activite_nature']?.value || '';
@@ -386,8 +389,8 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
           const avg = scored.reduce((a, q) => a + siteResp[q.id].score, 0) / scored.length;
           const col = scoreColor(avg);
           fill(doc, col); doc.roundedRect(MR - 36, y - 14, 36, 8, 1.5, 1.5, 'F');
-          bold(doc, 7); rgb(doc, C.WHITE);
-          doc.text(`Moy. ${avg.toFixed(1)}/5 — ${scoreLabel(avg)}`, MR - 34, y - 9.5);
+          bold(doc, 6.5); rgb(doc, C.WHITE);
+          doc.text(`Moy. ${avg.toFixed(1)}/5 — ${scoreLabel(avg)}`, MR - 34, y - 9.5, { maxWidth: 32 });
         }
 
         for (const q of qList) {
@@ -495,56 +498,80 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // PAGE — CONCLUSION & RECOMMANDATIONS DE L'IA
+    // PAGE — RAPPORT DE SCÉNARIO SMP
     // ══════════════════════════════════════════════════════════════════════════
-    const allMsgs = [
-      ...Object.values(allSites).flatMap(s => s.chatHistory || []),
-      ...(chatHistory || [])
-    ];
-    const aiConclusions = allMsgs.filter(m => m.role === 'assistant' && m.content?.trim());
+    const hasSmpContent = smpData?.scenario || smpData?.smpFinal > 0 ||
+      Object.values(smpData?.valeurs || {}).some(v => v > 0) ||
+      smpData?.hypotheses?.length > 0;
 
-    if (aiConclusions.length > 0) {
+    if (hasSmpContent) {
       chapterNum++;
       doc.addPage();
-      runningHeader(doc, client, 'Conclusion IA');
+      runningHeader(doc, client, 'Rapport de Scénario SMP');
       y = 22;
-      y = chapter(doc, chapterNum, 'Conclusion & Avis de l\'expert IA', y);
+      y = chapter(doc, chapterNum, 'Rapport de Scénario — Estimation SMP', y);
 
-      normal(doc, 8); rgb(doc, C.SUBTLE);
-      doc.text(
-        `L'analyse suivante a été générée par l'assistant IA sur la base des données terrain collectées lors de la visite du ${dateExp}.`,
-        ML, y, { maxWidth: CW }
-      );
-      y += 12;
+      // Carte SMP Final
+      const cardW = (CW - 6) / 2;
+      metricCard(doc, ML, y, cardW, 28, 'Sinistre Maximum Possible', fmt(smpData.smpFinal || 0), 'Montant estimé validé par l\'expert IA', C.NAVY);
+      const totalExp = (smpData.valeurs?.batiment || 0) + (smpData.valeurs?.materiel || 0) +
+                       (smpData.valeurs?.stocks || 0) + (smpData.valeurs?.pe || 0);
+      metricCard(doc, ML + cardW + 6, y, cardW, 28, 'Total Capitaux Exposés', fmt(totalExp), 'Somme des valeurs à risque', C.BLUE);
+      y += 36;
 
-      const lastConclusion = aiConclusions[aiConclusions.length - 1];
-      const others = aiConclusions.slice(0, -1);
+      // Scénario de référence
+      if (smpData.scenario) {
+        y = needsPage(doc, y, 30, runningHeader, [client, 'Rapport de Scénario SMP']);
+        y = section(doc, 'Scénario de sinistre retenu', y);
+        const scLines = doc.splitTextToSize(smpData.scenario, CW - 12);
+        const scH = scLines.length * 5.2 + 12;
+        fill(doc, C.MIST); doc.roundedRect(ML, y, CW, scH, 2, 2, 'F');
+        fill(doc, C.ACCENT); doc.rect(ML, y, 3.5, scH, 'F');
+        italic(doc, 9); rgb(doc, C.BODY);
+        doc.text(scLines, ML + 8, y + 8);
+        y += scH + 10;
+      }
 
-      // Conclusion principale (dernière réponse IA)
-      const concLines = doc.splitTextToSize(lastConclusion.content, CW - 12);
-      const concH     = concLines.length * 5.2 + 14;
-      y = needsPage(doc, y, concH + 4, runningHeader, [client, 'Conclusion IA']);
+      // Ventilation des valeurs
+      y = needsPage(doc, y, 50, runningHeader, [client, 'Rapport de Scénario SMP']);
+      y = section(doc, 'Ventilation des valeurs exposées (VHR)', y);
 
-      fill(doc, C.MIST); doc.roundedRect(ML, y, CW, concH, 2, 2, 'F');
-      fill(doc, C.BLUE); doc.rect(ML, y, 3.5, concH, 'F');
-      bold(doc, 7); rgb(doc, C.BLUE); doc.text('AVIS EXPERT IA', ML + 7, y + 7);
-      normal(doc, 8.5); rgb(doc, C.BODY); doc.text(concLines, ML + 7, y + 13);
-      y += concH + 10;
+      doc.autoTable({
+        startY: y,
+        margin: { left: ML, right: PW - MR },
+        head: [['Poste de valeur', 'Montant estimé (DZD)']],
+        body: [
+          ['Bâtiments & Génie Civil',       fmt(smpData.valeurs?.batiment)],
+          ['Matériels & Équipements',        fmt(smpData.valeurs?.materiel)],
+          ['Stocks (Matières & Produits)',   fmt(smpData.valeurs?.stocks)],
+          ["Pertes d'Exploitation (12 mois)", fmt(smpData.valeurs?.pe)],
+          [
+            { content: 'Total des capitaux exposés', styles: { fontStyle: 'bold' } },
+            { content: fmt(totalExp), styles: { fontStyle: 'bold' } }
+          ],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: C.NAVY, textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 9, textColor: C.BODY },
+        columnStyles: { 1: { halign: 'right', cellWidth: 68 } },
+        alternateRowStyles: { fillColor: [249, 250, 253] },
+      });
+      y = doc.lastAutoTable.finalY + 12;
 
-      // Échanges précédents (si pertinents)
-      if (others.length > 0) {
-        y = needsPage(doc, y, 15, runningHeader, [client, 'Conclusion IA']);
-        bold(doc, 8); rgb(doc, C.SUBTLE);
-        doc.text('Échanges antérieurs avec l\'assistant', ML, y); y += 8;
-
-        for (const msg of others) {
-          const ls    = doc.splitTextToSize(msg.content, CW - 10);
-          const mH    = ls.length * 5 + 10;
-          y = needsPage(doc, y, mH + 4, runningHeader, [client, 'Conclusion IA']);
-          fill(doc, [245, 247, 252]); doc.roundedRect(ML, y, CW, mH, 1.5, 1.5, 'F');
-          italic(doc, 8); rgb(doc, C.BODY); doc.text(ls, ML + 5, y + 7);
-          y += mH + 5;
-        }
+      // Hypothèses techniques
+      if (smpData.hypotheses?.length > 0) {
+        y = needsPage(doc, y, 30, runningHeader, [client, 'Rapport de Scénario SMP']);
+        y = section(doc, 'Hypothèses techniques retenues', y);
+        smpData.hypotheses.forEach((h, i) => {
+          y = needsPage(doc, y, 10, runningHeader, [client, 'Rapport de Scénario SMP']);
+          fill(doc, C.BLUE); doc.roundedRect(ML, y - 3, 5, 5, 1, 1, 'F');
+          bold(doc, 7); rgb(doc, C.WHITE);
+          doc.text(String(i + 1), ML + 1.5, y + 0.5);
+          normal(doc, 8.5); rgb(doc, C.BODY);
+          const hLines = doc.splitTextToSize(h, CW - 12);
+          doc.text(hLines, ML + 9, y);
+          y += hLines.length * 5 + 4;
+        });
       }
     }
 
