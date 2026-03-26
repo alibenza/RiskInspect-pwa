@@ -424,7 +424,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
           // Observation / valeur
           if (r.value || r.comment?.trim()) {
             const text = [r.value, r.comment?.trim()].filter(Boolean).join('  —  ');
-            const ls = doc.splitTextToSize(text, CW - 6);
+            const ls = doc.splitTextToSize(text, CW - 14);
             normal(doc, 8); rgb(doc, C.BODY);
             doc.text(ls, ML + 4, y);
             y += ls.length * 5 + 2;
@@ -512,11 +512,13 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
       y = chapter(doc, chapterNum, 'Rapport de Scénario — Estimation SMP', y);
 
       // Carte SMP Final
-      const cardW = (CW - 6) / 2;
-      metricCard(doc, ML, y, cardW, 28, 'Sinistre Maximum Possible', fmt(smpData.smpFinal || 0), 'Montant estimé validé par l\'expert IA', C.NAVY);
       const totalExp = (smpData.valeurs?.batiment || 0) + (smpData.valeurs?.materiel || 0) +
                        (smpData.valeurs?.stocks || 0) + (smpData.valeurs?.pe || 0);
-      metricCard(doc, ML + cardW + 6, y, cardW, 28, 'Total Capitaux Exposés', fmt(totalExp), 'Somme des valeurs à risque', C.BLUE);
+      const smpPct = totalExp > 0 ? ((smpData.smpFinal || 0) / totalExp * 100) : 0;
+      const cardW = (CW - 12) / 3;
+      metricCard(doc, ML,                  y, cardW, 28, 'Sinistre Maximum Possible', fmt(smpData.smpFinal || 0), 'Montant SMP validé expert IA', C.NAVY);
+      metricCard(doc, ML + cardW + 6,      y, cardW, 28, 'Valeur Totale Assurée (VTA)', fmt(totalExp), 'Somme des capitaux assurés', C.BLUE);
+      metricCard(doc, ML + (cardW + 6) * 2, y, cardW, 28, 'Taux SMP / VTA', `${smpPct.toFixed(1)} %`, 'Part du sinistre sur la VTA', C.ACCENT);
       y += 36;
 
       // Scénario de référence
@@ -534,7 +536,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
 
       // Ventilation des valeurs
       y = needsPage(doc, y, 50, runningHeader, [client, 'Rapport de Scénario SMP']);
-      y = section(doc, 'Ventilation des valeurs exposées (VHR)', y);
+      y = section(doc, 'Ventilation des Valeurs Totales Assurées (VTA)', y);
 
       doc.autoTable({
         startY: y,

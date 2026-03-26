@@ -115,17 +115,17 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* RÉPARTITION DES CAPITAUX EXPOSÉS (VHR) */}
+        {/* RÉPARTITION DES CAPITAUX EXPOSÉS (VTA) */}
         <div className="bg-slate-900 p-8 rounded-[3rem] text-white space-y-6">
           <h4 className="text-[11px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-            <TrendingUp size={16} /> Valeurs à Neuf (VHR)
+            <TrendingUp size={16} /> Valeur Totale Assurée (VTA)
           </h4>
           
           <div className="space-y-4">
-            <VHRItem label="Bâtiments" value={smpData.valeurs?.batiment} color="bg-blue-500" />
-            <VHRItem label="Équipements" value={smpData.valeurs?.materiel} color="bg-indigo-500" />
-            <VHRItem label="Stocks" value={smpData.valeurs?.stocks} color="bg-orange-500" />
-            <VHRItem label="Pertes d'Exploitation" value={smpData.valeurs?.pe} color="bg-rose-500" />
+            <VTAItem label="Bâtiments" value={smpData.valeurs?.batiment} color="bg-blue-500" />
+            <VTAItem label="Équipements" value={smpData.valeurs?.materiel} color="bg-indigo-500" />
+            <VTAItem label="Stocks" value={smpData.valeurs?.stocks} color="bg-orange-500" />
+            <VTAItem label="Pertes d'Exploitation" value={smpData.valeurs?.pe} color="bg-rose-500" />
           </div>
 
           <div className="pt-6 border-t border-slate-800">
@@ -160,7 +160,7 @@ const Dashboard = () => {
 };
 
 /* Sous-composant pour les lignes de valeur */
-const VHRItem = ({ label, value, color }) => (
+const VTAItem = ({ label, value, color }) => (
   <div className="space-y-1">
     <div className="flex justify-between text-[10px] font-bold uppercase mb-1">
       <span className="text-slate-400">{label}</span>

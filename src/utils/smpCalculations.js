@@ -42,7 +42,7 @@ export const calculatePE = (margeBruteAnnuelle, moisArret) => {
 };
 
 /**
- * Calcule la VHR (Valeur Hautement Exposée) simplifiée
+ * Calcule la VTA (Valeur Totale Assurée) simplifiée
  */
 export const estimateVHR = (surface, typeBatiment, typeStock) => {
   const costBat = SMP_REFERENCE_DATA.construction_costs[typeBatiment] || 45000;

@@ -46,7 +46,7 @@ const SMPPreview = () => {
         {/* Section 2 : Ventilation des Valeurs Exposées */}
         <section>
           <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
-            <TrendingUp size={14} className="text-indigo-500" /> Ventilation des Valeurs (VHR)
+            <TrendingUp size={14} className="text-indigo-500" /> Ventilation des Valeurs (VTA)
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <ValueCard icon={<Building2 size={16}/>} label="Bâtiments" value={smpData.valeurs?.batiment} color="blue" />
