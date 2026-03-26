@@ -77,7 +77,7 @@ const chapter = (doc, num, title, y) => {
   fill(doc, C.NAVY);
   doc.roundedRect(ML, y, CW, 12, 1.5, 1.5, 'F');
   bold(doc, 9.5); rgb(doc, C.WHITE);
-  doc.text(`${num}.  ${title.toUpperCase()}`, ML + 6, y + 8);
+  doc.text(`${num}.  ${title.toUpperCase()}`, ML + 6, y + 8, { maxWidth: CW - 12 });
   return y + 18;
 };
 
@@ -86,7 +86,7 @@ const section = (doc, title, y) => {
   fill(doc, C.MIST);
   doc.roundedRect(ML, y, CW, 9, 1, 1, 'F');
   bold(doc, 8.5); rgb(doc, C.BLUE);
-  doc.text(title, ML + 4, y + 6.2);
+  doc.text(title, ML + 4, y + 6.2, { maxWidth: CW - 8 });
   return y + 14;
 };
 
@@ -94,10 +94,10 @@ const section = (doc, title, y) => {
 const metricCard = (doc, x, y, w, h, label, value, sub, bg = C.NAVY, fg = C.WHITE) => {
   fill(doc, bg); doc.roundedRect(x, y, w, h, 3, 3, 'F');
   bold(doc, 6.5); rgb(doc, bg === C.NAVY ? [150, 175, 220] : C.SUBTLE);
-  doc.text(label.toUpperCase(), x + 5, y + 7);
-  bold(doc, 15);  rgb(doc, fg);
-  doc.text(String(value), x + 5, y + 19);
-  if (sub) { normal(doc, 6.5); rgb(doc, bg === C.NAVY ? [150, 175, 220] : C.SUBTLE); doc.text(sub, x + 5, y + 26); }
+  doc.text(label.toUpperCase(), x + 5, y + 7, { maxWidth: w - 8 });
+  bold(doc, 13);  rgb(doc, fg);
+  doc.text(String(value), x + 5, y + 19, { maxWidth: w - 8 });
+  if (sub) { normal(doc, 6.5); rgb(doc, bg === C.NAVY ? [150, 175, 220] : C.SUBTLE); doc.text(sub, x + 5, y + 27, { maxWidth: w - 8 }); }
 };
 
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
     infoRows.forEach(([lbl, val], i) => {
       if (i > 0) { stroke(doc, C.RULE); doc.setLineWidth(0.15); doc.line(ML + 14, iy - 2, MR - 4, iy - 2); }
       bold(doc, 7.5); rgb(doc, C.SUBTLE); doc.text(lbl, ML + 14, iy + 3);
-      bold(doc, 8);   rgb(doc, C.NAVY);   doc.text(val, ML + 52, iy + 3);
+      bold(doc, 8);   rgb(doc, C.NAVY);   doc.text(val, ML + 52, iy + 3, { maxWidth: MR - 4 - (ML + 52) });
       iy += 12;
     });
 
@@ -204,6 +204,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
 
       doc.autoTable({
         startY: y,
+        margin: { left: ML, right: PW - MR },
         head: [['Poste de valeur', 'Montant estimé']],
         body: [
           ['Bâtiments & Génie Civil',      fmt(smpData.valeurs.batiment)],
@@ -252,6 +253,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
 
       doc.autoTable({
         startY: y,
+        margin: { left: ML, right: PW - MR },
         head: [['Garantie', 'Niveau', 'Exposition', 'Avis technique']],
         body: garRows,
         theme: 'striped',
@@ -350,6 +352,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
 
         doc.autoTable({
           startY: y,
+          margin: { left: ML, right: PW - MR },
           body: siteInfo,
           theme: 'plain',
           bodyStyles: { fontSize: 8, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 } },
@@ -397,20 +400,21 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
 
           y = needsPage(doc, y, 14, runningHeader, [client, siteName]);
 
-          // Libellé de la question
+          // Libellé de la question (largeur réduite si score présent pour éviter la collision)
+          const labelMaxW = hasScore ? CW - 38 : CW - 6;
           bold(doc, 7.5); rgb(doc, C.NAVY);
-          doc.text(q.label, ML + 2, y);
+          doc.text(q.label, ML + 2, y, { maxWidth: labelMaxW });
 
-          // Score visuel
+          // Score visuel (5 pastilles + valeur, alignées à droite)
           if (hasScore) {
             const sc  = r.score;
             const col = scoreColor(sc);
-            for (let d = 0; d < 5; d++) {
+            for (let d = 4; d >= 0; d--) {
               fill(doc, d < sc ? col : C.RULE);
-              doc.circle(MR - 2 - d * 4.5, y - 1, 1.5, 'F');
+              doc.circle(MR - 3 - (4 - d) * 5, y - 0.5, 1.8, 'F');
             }
             bold(doc, 6.5); rgb(doc, col);
-            doc.text(`${sc}/5`, MR - 26, y + 3.5);
+            doc.text(`${sc}/5`, MR - 30, y + 4.5);
           }
           y += 6;
 
