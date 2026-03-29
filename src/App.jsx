@@ -5,7 +5,7 @@ import InspectionForm from './components/InspectionForm';
 import AuditorSettings from './components/AuditorSettings';
 import History from './components/History';
 import { useInspectionStore } from './hooks/useInspectionStore';
-import { exportToPdf } from './components/ExportPDF';
+import { exportToWord } from './components/ExportWord';
 import { 
   FileDown, 
   Menu, 
@@ -44,10 +44,10 @@ function App() {
     setIsExporting(true);
     try {
       // On attend que la fonction asynchrone se termine
-      await exportToPdf(responses, questionsConfig, aiResults, auditorInfo);
+      await exportToWord(responses, questionsConfig, aiResults, auditorInfo);
     } catch (error) {
       console.error("Erreur export:", error);
-      alert("Une erreur est survenue lors de la génération du PDF.");
+      alert("Une erreur est survenue lors de la génération du rapport Word.");
     } finally {
       setIsExporting(false);
     }

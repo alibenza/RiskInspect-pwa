@@ -1,6 +1,6 @@
 import React from 'react';
 import { useInspectionStore } from '../hooks/useInspectionStore';
-import { exportToPdf } from './ExportPDF'; 
+import { exportToWord } from './ExportWord';
 import { 
   LayoutDashboard, 
   ClipboardCheck, 
@@ -17,7 +17,7 @@ const MainNavigation = ({ activeTab, setActiveTab }) => {
       alert("L'audit est vide. Veuillez remplir quelques informations avant d'exporter.");
       return;
     }
-    exportToPdf(responses, questionsConfig, aiResults);
+    exportToWord(responses, questionsConfig, aiResults);
   };
 
   return (

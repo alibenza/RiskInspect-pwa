@@ -14,7 +14,7 @@ import {
   MessageSquareText, // Nouveau : icône Chat
   LayoutDashboard // Nouveau : icône Dashboard
 } from 'lucide-react';
-import { exportToPdf } from './ExportPDF';
+import { exportToWord } from './ExportWord';
 import AIChatRoom from './AIChatRoom';
 import SMPPreview from './SMPPreview';
 
@@ -123,7 +123,7 @@ const AIAnalysis = () => {
         <div className="flex gap-3">
           {aiResults && (
             <button 
-              onClick={() => exportToPdf(responses, questionsConfig, aiResults, auditorInfo)}
+              onClick={() => exportToWord(responses, questionsConfig, aiResults, auditorInfo)}
               className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase transition-all shadow-lg"
             >
               <FileDown size={16} /> Exporter Rapport
