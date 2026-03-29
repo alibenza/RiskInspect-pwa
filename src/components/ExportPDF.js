@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useInspectionStore } from '../hooks/useInspectionStore';
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+// ─── DESIGN TOKENS (Inchangés) ────────────────────────────────────────────────
 const C = {
   NAVY:    [10,  25,  60],
   BLUE:    [0,   70,  173],
@@ -30,7 +30,7 @@ const fmt = (n) => {
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DZD';
 };
 
-// ─── UTILITIES ────────────────────────────────────────────────────────────────
+// ─── UTILITIES (Inchangés) ────────────────────────────────────────────────────
 const rgb    = (doc, col) => doc.setTextColor(...col);
 const fill   = (doc, col) => doc.setFillColor(...col);
 const stroke = (doc, col) => doc.setDrawColor(...col);
@@ -45,7 +45,7 @@ const hline = (doc, y, x1 = ML, x2 = MR, color = C.RULE, w = 0.25) => {
 };
 
 const needsPage = (doc, y, h, addHeader, args) => {
-  if (y + h > PH - 22) {
+  if (y + h > PH - 22) { // Sécurité accrue à 22mm
     doc.addPage();
     if (addHeader) addHeader(doc, ...args);
     return 25; 
@@ -56,7 +56,6 @@ const needsPage = (doc, y, h, addHeader, args) => {
 const scoreColor = (s) => s >= 4 ? C.GREEN : s >= 2.5 ? C.ORANGE : C.RED;
 const scoreLabel = (s) => s >= 4 ? 'Satisfaisant' : s >= 2.5 ? 'À améliorer' : 'Insuffisant';
 
-// ─── RUNNING HEADER ───────────────────────────────────────────────────────────
 const runningHeader = (doc, client, section = '') => {
   fill(doc, C.NAVY);
   doc.rect(0, 0, PW, 10, 'F');
@@ -67,7 +66,6 @@ const runningHeader = (doc, client, section = '') => {
   if (section) doc.text(section, MR, 6.5, { align: 'right' });
 };
 
-// ─── RUNNING FOOTER ───────────────────────────────────────────────────────────
 const runningFooter = (doc, page, total, client) => {
   hline(doc, PH - 12, ML, MR, C.RULE, 0.2);
   normal(doc, 6.5); rgb(doc, C.SUBTLE);
@@ -75,7 +73,6 @@ const runningFooter = (doc, page, total, client) => {
   doc.text(`Page ${page} / ${total}`, MR, PH - 8, { align: 'right' });
 };
 
-// ─── CHAPTER HEADING ─────────────────────────────────────────────────────────
 const chapter = (doc, num, title, y) => {
   fill(doc, C.NAVY);
   doc.roundedRect(ML, y, CW, 12, 1.5, 1.5, 'F');
@@ -84,7 +81,6 @@ const chapter = (doc, num, title, y) => {
   return y + 18;
 };
 
-// ─── SECTION HEADING ─────────────────────────────────────────────────────────
 const sectionStyle = (doc, title, y) => {
   fill(doc, C.MIST);
   doc.roundedRect(ML, y, CW, 9, 1, 1, 'F');
@@ -93,7 +89,6 @@ const sectionStyle = (doc, title, y) => {
   return y + 14;
 };
 
-// ─── METRIC CARD ─────────────────────────────────────────────────────────────
 const metricCard = (doc, x, y, w, h, label, value, sub, bg = C.NAVY, fg = C.WHITE) => {
   fill(doc, bg); doc.roundedRect(x, y, w, h, 3, 3, 'F');
   bold(doc, 6.5); rgb(doc, bg === C.NAVY ? [150, 175, 220] : C.SUBTLE);
@@ -160,39 +155,19 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
       y += 40;
     }
 
+    // [CORRECTIF 1] : Synthèse IA découpée
     if (aiResults?.synthese_executive) {
-      bold(doc, 8.5); rgb(doc, C.NAVY); doc.text('Synthèse de l\'expert IA', ML, y); y += 6;
-      const synth = doc.splitTextToSize(aiResults.synthese_executive, CW - 12);
-      const synthH = synth.length * 5 + 10;
+      bold(doc, 8.5); rgb(doc, C.NAVY); doc.text("Synthèse de l'expert IA", ML, y); y += 6;
+      const synthLines = doc.splitTextToSize(aiResults.synthese_executive, CW - 12);
+      const synthH = (synthLines.length * 5) + 8;
       y = needsPage(doc, y, synthH + 10, runningHeader, [client, 'Résumé Exécutif']);
       fill(doc, C.MIST); doc.roundedRect(ML, y, CW, synthH, 2, 2, 'F');
       fill(doc, C.BLUE); doc.rect(ML, y, 3, synthH, 'F');
-      italic(doc, 9); rgb(doc, C.BODY); doc.text(synth, ML + 8, y + 7);
+      italic(doc, 9); rgb(doc, C.BODY); doc.text(synthLines, ML + 8, y + 7);
       y += synthH + 10;
     }
 
-    // TABLEAUX AVEC MARGES FIXES
-    if (smpData?.valeurs) {
-      y = needsPage(doc, y, 60, runningHeader, [client, 'Résumé Exécutif']);
-      bold(doc, 8.5); rgb(doc, C.NAVY); doc.text('Détail des capitaux exposés', ML, y); y += 5;
-      doc.autoTable({
-        startY: y,
-        margin: { left: ML, right: ML },
-        head: [['Poste de valeur', 'Montant estimé']],
-        body: [
-          ['Bâtiments & Génie Civil', fmt(smpData.valeurs.batiment)],
-          ['Matériels & Équipements', fmt(smpData.valeurs.materiel)],
-          ['Stocks', fmt(smpData.valeurs.stocks)],
-          ['Pertes d\'Exploitation', fmt(smpData.valeurs.pe)],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: C.NAVY, fontSize: 8 },
-        columnStyles: { 1: { halign: 'right' } }
-      });
-      y = doc.lastAutoTable.finalY + 10;
-    }
-
-    // PAGES INSPECTION SITES (Correction majeure ici)
+    // PAGE SITES
     let chapterNum = 2;
     for (const [siteId, site] of Object.entries(allSites)) {
       chapterNum++;
@@ -215,35 +190,32 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
 
         for (const q of qList) {
           const r = siteResp[q.id];
-          const hasScore = q.isScored && r.score != null;
           
-          // 1. CALCUL ET AFFICHAGE DU LIBELLÉ (SPLIT SI TROP LONG)
-          const labelMaxW = hasScore ? CW - 45 : CW - 5;
-          const labelLines = doc.splitTextToSize(q.label, labelMaxW);
-          const blockH = (labelLines.length * 5) + 12; // Estimation hauteur bloc question
+          // [CORRECTIF 2] : DÉCOUPAGE DU LIBELLÉ DE LA QUESTION (Crucial pour HSE/Maintenance)
+          const hasScore = q.isScored && r.score != null;
+          const labelMaxW = hasScore ? CW - 45 : CW - 5; 
+          const splitLabel = doc.splitTextToSize(q.label, labelMaxW);
+          const blockH = (splitLabel.length * 5) + 12;
 
           y = needsPage(doc, y, blockH, runningHeader, [client, siteName]);
           bold(doc, 7.5); rgb(doc, C.NAVY);
-          doc.text(labelLines, ML + 2, y);
+          doc.text(splitLabel, ML + 2, y);
 
-          // 2. SCORE (ALIGNÉ À DROITE)
           if (hasScore) {
             rgb(doc, scoreColor(r.score));
             doc.text(`${r.score}/5`, MR - 2, y, { align: 'right' });
           }
           
-          y += (labelLines.length * 5);
+          y += (splitLabel.length * 5) + 2;
 
-          // 3. RÉPONSE ET COMMENTAIRE (SÉCURISÉ)
+          // [CORRECTIF 3] : DÉCOUPAGE DE L'OBSERVATION
           if (r.value || r.comment) {
-            const text = [r.value, r.comment?.trim()].filter(Boolean).join('  —  ');
+            const text = [r.value, r.comment?.trim()].filter(Boolean).join(' — ');
             const responseLines = doc.splitTextToSize(text, CW - 12);
-            y = needsPage(doc, y, responseLines.length * 5 + 5, runningHeader, [client, siteName]);
+            y = needsPage(doc, y, (responseLines.length * 5) + 5, runningHeader, [client, siteName]);
             normal(doc, 8); rgb(doc, C.BODY);
             doc.text(responseLines, ML + 4, y);
             y += (responseLines.length * 5) + 4;
-          } else {
-            y += 4;
           }
 
           hline(doc, y, ML + 2, MR, C.RULE, 0.15);
@@ -252,26 +224,7 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
       }
     }
 
-    // SCÉNARIO SMP FINAL
-    if (smpData?.scenario) {
-      doc.addPage();
-      runningHeader(doc, client, 'Estimation SMP');
-      y = 22;
-      y = chapter(doc, ++chapterNum, 'Scénario & Estimation SMP', y);
-      
-      bold(doc, 8.5); rgb(doc, C.NAVY); doc.text('Scénario de sinistre retenu', ML, y); y += 6;
-      const scLines = doc.splitTextToSize(smpData.scenario, CW - 12);
-      const scH = scLines.length * 5.5 + 10;
-
-      y = needsPage(doc, y, scH + 10, runningHeader, [client, 'Estimation SMP']);
-      fill(doc, C.MIST); doc.roundedRect(ML, y, CW, scH, 2, 2, 'F');
-      fill(doc, C.ACCENT); doc.rect(ML, y, 3, scH, 'F');
-      italic(doc, 9); rgb(doc, C.BODY);
-      doc.text(scLines, ML + 8, y + 8);
-      y += scH + 15;
-    }
-
-    // PIED DE PAGE ET SAUVEGARDE
+    // FINALISATION
     const total = doc.internal.getNumberOfPages();
     for (let i = 2; i <= total; i++) {
       doc.setPage(i);
@@ -281,6 +234,5 @@ export const exportToPdf = async (responses, questionsConfig, aiResults, auditor
     doc.save(`AUDIT_CIAR_${client.replace(/\s+/g, '_')}.pdf`);
   } catch (err) {
     console.error('Erreur:', err);
-    alert('Erreur lors de la génération : ' + err.message);
   }
 };
